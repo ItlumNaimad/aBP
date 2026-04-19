@@ -12,3 +12,4 @@ frontend/dist/
 .env
 *.local
 .DS_Store
+context.md

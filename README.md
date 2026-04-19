@@ -19,4 +19,19 @@ Projekt studencki: Aplikacja mobilna serwowana na architekturze reaktywnej (WebF
     *   **Komenda:** `.\gradlew.bat build -x test`
         **Analiza:** Sukces (`BUILD SUCCESSFUL`). Backend skompilował się bez zarzutu. Konfiguracja w kodzie nie zawiera błędów syntaksycznych ani niezgodności w adnotacjach Springa. Repozytoria i silniki reaktywne załadowano poprawnie.
     *   **Wstępne środowisko sprzętowe (Uwaga Dockera):**
-        Oczekujące zadania i serwer aplikacji nałożone na kontener bazy danych (`docker-compose up -d`) zostaną poprowadzone przez natywne repozytorium na **podsystemie WSL**. Obecne stany deweloperskie wykonano omijając konieczność starych kompilacji maszyn z Windows 10 (21H2).
+        Oczekujące zadania i serwer aplikacji nałożone na kontener bazy danych. Środowisko bazy danych zostało wzniesione za pomocą WSL używając lokalnego dockera z poziomu konsoli:
+        *   `docker compose up -d` (w katalogu `/Backend`) - PostgreSql 15 (W pełni działający, port: 5432)
+        Doinstalowano i wykorzystano natywny pakiet `openjdk-17-jdk` co pozwoliło na poprawne połączenie się i zdanie testów integracyjnych `R2DBC` za pomocą wywołania w konsoli linuksowej:
+        *   `./gradlew test` (Rezultat: Sukces połączeń reaktywnych, Build Successful)
+
+**Zadania: Ukończono całkowicie Fazę 2 - Logika Biznesowa (Backend).**
+
+*   **Zrealizowane kroki:**
+    1. Utworzono usługi zarządzania danymi użytkownika `UserService` dopuszczające logowanie za pomocą samej nazwy.
+    2. Zintegrowano zewnętrzny model `Google Gemini AI` tworząc konfigurację `WebClient` z autoryzacją via `application.yaml` (klucz pobierany domyślnie ze zmiennej środowiskowej `${GEMINI_API_KEY}`).
+    3. Dodano silnik wyłapywania anomalii medycznych w `MeasurementService`, kalkulujący odchyłki za pomocą grupowych coroutinowych list obiektów mapowanych przez reaktor z `MeasurementRepository.findTop10ByUserIdOrderByCreatedAtDesc`.
+    4. Wdrożono bibliotekę `openpdf` oraz zaimplementowano generator zestawień w coroutine `withContext(Dispatchers.IO)`, aby uniknąć problemu zatorowości Non-Blocking wątków obsługiwanych przez macierzysty Netty z racji ciężkich wejść i wyjść używanych do wygenerowania tabeli PDF.
+
+*   **Pomyślne weryfikacje / Komendy wykonawcze:**
+    *   **Komenda:** `./gradlew build -x test` w WSL
+        **Analiza:** Sukces. Wdrożenie asynchronicznego parsera JSON oparto o zmodernizowany framework `tools.jackson.databind.ObjectMapper`. Konfiguracja beanów (w tym `WebClient`) udokumentowana kompilacją bez defektów.

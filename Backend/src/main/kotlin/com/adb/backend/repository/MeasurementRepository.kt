@@ -7,4 +7,5 @@ import java.util.UUID
 
 interface MeasurementRepository : CoroutineCrudRepository<Measurement, UUID> {
     fun findByUserId(userId: UUID): Flow<Measurement>
+    fun findTop10ByUserIdOrderByCreatedAtDesc(userId: UUID): Flow<Measurement>
 }

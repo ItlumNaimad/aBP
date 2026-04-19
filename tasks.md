@@ -7,10 +7,10 @@
 - `[x]` Stworzenie modeli Encji i interfejsów CoroutineCrudRepository (Pomiar, Użytkownik)
 
 ## Faza 2: Logika Biznesowa (Backend)
-- `[ ]` Prosty Serwis Użytkownika / Autoryzacji (UUID konta / podstawowy login)
-- `[ ]` Integracja Gemini API (Usługa mapująca mowę tekstową na model `{systolic, diastolic, pulse}`)
-- `[ ]` Usługa Pomiarowa z wykrywaniem i walidacją Anomalii Medycznych (+ zliczanie średniej w klastrach bazodanowych u użytkownika)
-- `[ ]` Generator raportów PDF oparty o `Dispatchers.IO` i ładny medyczny projekt tabelaryczny (OpenPDF / iText)
+- `[x]` Prosty Serwis Użytkownika / Autoryzacji (UUID konta / podstawowy login)
+- `[x]` Integracja Gemini API (Usługa mapująca mowę tekstową na model `{systolic, diastolic, pulse}`)
+- `[x]` Usługa Pomiarowa z wykrywaniem i walidacją Anomalii Medycznych (+ zliczanie średniej w klastrach bazodanowych u użytkownika)
+- `[x]` Generator raportów PDF oparty o `Dispatchers.IO` i ładny medyczny projekt tabelaryczny (OpenPDF / iText)
 
 ## Faza 3: Reaktywne Kontrolery (API)
 - `[ ]` Endpoint rejestrowania oraz wyciągania wyników z bazy (CRUD: GET, POST)
