@@ -13,9 +13,9 @@
 - `[x]` Generator raportów PDF oparty o `Dispatchers.IO` i ładny medyczny projekt tabelaryczny (OpenPDF / iText)
 
 ## Faza 3: Reaktywne Kontrolery (API)
-- `[ ]` Endpoint rejestrowania oraz wyciągania wyników z bazy (CRUD: GET, POST)
-- `[ ]` Endpoint parsowania tekstu w locie bez zapisu do bazy (`/api/parse`)
-- `[ ]` Otwarcie strumieni do zrzutu i pobrania pliku `.pdf`
+- `[x]` Endpoint rejestrowania oraz wyciągania wyników z bazy (CRUD: GET, POST)
+- `[x]` Endpoint parsowania tekstu w locie bez zapisu do bazy (`/api/parse`)
+- `[x]` Otwarcie strumieni do zrzutu i pobrania pliku `.pdf`
 
 ## Faza 4: Struktura Mobilna (Frontend React Native)
 - `[ ]` Inicjalizacja aplikacji React Native (Expo dla szybszego wsparcia i testowania)
