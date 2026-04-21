@@ -1,10 +1,20 @@
 {
   "expo": {
-    "scheme": "acme",
+    "name": "aBP - Monitor Ciśnienia",
+    "slug": "abp-blood-pressure",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "abp",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
     "plugins": [
       "expo-router"
     ],
-    "name": "Frontend",
-    "slug": "Frontend"
+    "android": {
+      "package": "com.adb.abp",
+      "adaptiveIcon": {
+        "backgroundColor": "#0097A7"
+      }
+    }
   }
 }
