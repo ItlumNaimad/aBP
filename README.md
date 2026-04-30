@@ -53,6 +53,41 @@ Projekt studencki: Aplikacja mobilna serwowana na architekturze reaktywnej (WebF
     *   **Komenda:** `./gradlew build` w WSL
         **Analiza:** Kod skompilował się bez zarzutu. Przepustowość kontrolerów WebFlux gotowa na dołączenie frontendu.
 
+**Zadania: Ukończono Fazę 4 - Struktura Mobilna (Frontend React Native).**
+
+*   **Zrealizowane kroki:**
+    1. Zainicjalizowano projekt React Native z wykorzystaniem Expo Router (file-based routing).
+    2. Skonfigurowano globalny stan aplikacji z wykorzystaniem Zustand (`store/useAppStore.ts`) z persystencją motywu jasny/ciemny w AsyncStorage.
+    3. Utworzono system motywów medycznych w React Native Paper (Material Design 3) z paletą kolorów teal/cyan i powiększonymi czcionkami dla seniorów (`theme/index.ts`).
+    4. Zbudowano klienta API opartego o Axios (`api/client.ts`) z automatycznym wykrywaniem środowiska (Android emulator vs. fizyczny telefon vs. web).
+    5. Skonfigurowano dolną nawigację tabową z trzema zakładkami: Pulpit, Historia, Ustawienia.
+
+*   **Pomyślne weryfikacje / Komendy wykonawcze:**
+    *   **Komenda:** `cd Frontend && ./node_modules/.bin/tsc --noEmit`
+        **Analiza:** Sukces — kompilacja TypeScript bez żadnych błędów.
+
+**Zadania: Ukończono Fazę 5 - Widoki i Moduł Głosowy (Frontend).**
+
+*   **Zrealizowane kroki:**
+    1. Zbudowano Dashboard z wielkim przyciskiem mikrofonu, kartą ostatniego pomiaru z kolorowymi statusami medycznymi (norma/podwyższone/wysokie), dialogiem ręcznego wpisywania tekstu do AI, i edytowalnym dialogiem potwierdzenia wartości z wykrywaniem anomalii.
+    2. Dodano kartę **podsumowania statystyk** na Dashboard: średnie ciśnienie SYS/DIA, średnie tętno, zliczanie anomalii z ostatnich pomiarów.
+    3. Zintegrowano **wykresy liniowe** historii ciśnienia za pomocą biblioteki `victory-native` z interaktywnym tooltipmem na dotyk (3 linie: SYS, DIA, Puls z osią czasu).
+    4. Wdrożono **zapis PDF na urządzenie** z wykorzystaniem nowego API `expo-file-system` v19 (klasy `File`, `Paths`) + natywny dialog udostępniania (`expo-sharing`).
+    5. Przygotowano abstrakcyjny hook `useVoiceInput` pod przyszłą integrację natywnego STT (wymaga Development Build).
+    6. Zainstalowano i skonfigurowano dodatkowe zależności: `victory-native`, `react-native-reanimated`, `@shopify/react-native-skia`, `react-native-gesture-handler`, `react-native-svg`, `expo-file-system`, `expo-sharing`.
+    7. Dodano konfigurację Babel (`babel.config.js`) z pluginem `react-native-reanimated/plugin`.
+
+*   **Pomyślne weryfikacje / Komendy wykonawcze:**
+    *   **Komenda:** `cd Frontend && ./node_modules/.bin/tsc --noEmit`
+        **Analiza:** Sukces — 0 błędów TypeScript po integracji victory-native i nowego API expo-file-system.
+
+### Raport - 23.04.2026 (Podsumowanie)
+**Faza 4 i 5 zostały zrealizowane.**
+
+Struktura frontendowa jest kompletna z nawigacją, stanem, motywem i widokami. Jedyny brakujący element to natywne rozpoznawanie mowy (STT), które wymaga Development Build (`expo prebuild + run:android`) — przygotowano hook `useVoiceInput` gotowy do podpięcia.
+
+---
+
 ## Użyte Mechanizmy Reaktywności (Kotlin Coroutines vs. Java Reactor)
 
 Aplikacja oparta na architekturze reaktywnej (Spring WebFlux) została zaimplementowana z wykorzystaniem Kotlin Coroutines. Pomimo identycznego celu – uwolnienia wątków przed blokowaniem (Non-blocking I/O) – Coroutines stanowią lżejszą i bardziej czytelną alternatywę dla standardowych reaktorów takich jak biblioteka Java Reactor (WebFlux domyślnie używa Project Reactor).
@@ -73,3 +108,67 @@ Oto przyporządkowanie użytych mechanizmów Coroutines z `Backend` do ich odpow
     *   **Odpowiednik w Java Reactor:** `.subscribeOn(Schedulers.boundedElastic())` lub `.publishOn(...)`.
     *   **Gdzie użyte:** Konkretna implementacja w klasie `PdfGeneratorService` do wygenerowania raportu openpdf (`fun generateHealthReport`).
     *   **Dlaczego użyte:** Generowanie dokumentu ustrukturyzowanego takiego jak PDF na bazie wbudowanych bibliotek IO jest operacją naturalnie blokującą. Uruchomienie jej na domyślnej pętli Netty zablokowałoby obsługę powiadomień dla wszystkich innych klientów. `Dispatchers.IO` to pula wątków specjalnie stworzona do blokujących operacji i deleguje to zadanie, po czym zwraca wynik asynchronicznie, tak samo jak zachowałby się podsystem `Schedulers.boundedElastic` pozwalający obronić "Event Loop" wektorujący żądania.
+
+---
+
+## Komendy Użyte w Projekcie (Dokumentacja)
+
+### Backend (Kotlin / Spring Boot)
+
+```bash
+# Uruchomienie bazy danych PostgreSQL w kontenerze Docker
+cd Backend && docker compose up -d
+
+# Kompilacja backendu (bez testów)
+cd Backend && ./gradlew build -x test
+
+# Kompilacja backendu z testami
+cd Backend && ./gradlew build
+
+# Uruchomienie testów
+cd Backend && ./gradlew test
+
+# Uruchomienie serwera backendowego (port 8080)
+cd Backend && ./gradlew bootRun
+```
+
+### Frontend (React Native / Expo)
+
+```bash
+# Instalacja zależności
+cd Frontend && npm install
+
+# Instalacja zależności kompatybilnych z Expo SDK
+cd Frontend && npx expo install <nazwa-paczki>
+
+# Uruchomienie Metro Bundler (serwer deweloperski)
+cd Frontend && npm start
+
+# Uruchomienie z wyczyszczonym cache (po zmianach babel.config.js)
+cd Frontend && npx expo start -c
+
+# Kompilacja TypeScript (sprawdzenie typów bez emitowania kodu)
+cd Frontend && ./node_modules/.bin/tsc --noEmit
+
+# Development Build (wymagany dla natywnych modułów jak STT)
+cd Frontend && npx expo prebuild
+cd Frontend && npx expo run:android
+```
+
+### Zainstalowane Zależności Frontendowe
+
+| Paczka | Wersja | Cel |
+|---|---|---|
+| `expo` | ^54.0.1 | Platforma deweloperska React Native |
+| `expo-router` | ~6.0.0 | File-based routing |
+| `react-native-paper` | ^5.15.1 | Material Design 3 UI |
+| `zustand` | ^5.0.12 | Globalny zarządzacz stanu |
+| `axios` | ^1.15.1 | Klient HTTP |
+| `victory-native` | ^41.20.2 | Interaktywne wykresy |
+| `@shopify/react-native-skia` | 2.2.12 | Silnik renderujący Skia (wymagany przez victory-native) |
+| `react-native-reanimated` | ~4.1.1 | Animacje (wymagany przez victory-native) |
+| `react-native-gesture-handler` | ~2.28.0 | Obsługa gestów (wymagany przez victory-native) |
+| `react-native-svg` | 15.12.1 | Grafika wektorowa SVG |
+| `expo-file-system` | ~19.0.21 | Zapis plików na urządzeniu |
+| `expo-sharing` | ~14.0.8 | Natywny dialog udostępniania plików |
+| `@react-native-async-storage/async-storage` | ^3.0.2 | Persystentny storage (motyw) |

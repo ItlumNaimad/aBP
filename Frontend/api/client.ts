@@ -68,12 +68,50 @@ export const saveMeasurement = async (
 // Endpointy raportów PDF
 // ——————————————————————————————————————
 
-/** Pobierz raport PDF jako Blob */
-export const downloadReport = async (userId: string): Promise<Blob> => {
+/** Pobierz raport PDF jako ArrayBuffer (kompatybilne z React Native) */
+export const downloadReport = async (userId: string): Promise<ArrayBuffer> => {
   const response = await api.get(`/api/reports/${userId}/download`, {
-    responseType: 'blob',
+    responseType: 'arraybuffer',
   });
   return response.data;
+};
+
+// ——————————————————————————————————————
+// Zapis PDF na urządzenie (expo-file-system + expo-sharing)
+// ——————————————————————————————————————
+
+import { File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+
+/**
+ * Pobierz PDF z backendu i otwórz natywny dialog udostępniania/zapisu.
+ *
+ * Proces (expo-file-system v19 — nowe API):
+ * 1. Pobranie ArrayBuffer z API
+ * 2. Zapis do pliku w Paths.cache za pomocą klasy File
+ * 3. Otwarcie natywnego dialogu Sharing
+ */
+export const savePdfToDevice = async (userId: string): Promise<void> => {
+  const arrayBuffer = await downloadReport(userId);
+
+  // Nazwa pliku z datą
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const fileName = `raport_cisnienia_${dateStr}.pdf`;
+
+  // expo-file-system v19: Zapis za pomocą klasy File
+  const file = new File(Paths.cache, fileName);
+  const bytes = new Uint8Array(arrayBuffer);
+  file.write(bytes);
+
+  // Natywny dialog udostępniania / zapisu
+  if (await Sharing.isAvailableAsync()) {
+    await Sharing.shareAsync(file.uri, {
+      mimeType: 'application/pdf',
+      dialogTitle: 'Zapisz raport ciśnienia',
+      UTI: 'com.adobe.pdf',
+    });
+  }
 };
 
 export default api;

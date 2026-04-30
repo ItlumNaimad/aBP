@@ -18,21 +18,21 @@
 - `[x]` Otwarcie strumieni do zrzutu i pobrania pliku `.pdf`
 
 ## Faza 4: Struktura Mobilna (Frontend React Native)
-- `[ ]` Inicjalizacja aplikacji React Native (Expo dla szybszego wsparcia i testowania)
-- `[ ]` Konfiguracja stanu aplikacji (Zustand/Context API) oraz `React Navigation`
-- `[ ]` System bazowy stylów (dostępność: wysokie kontrasty, duże czytelne przyciski)
+- `[x]` Inicjalizacja aplikacji React Native (Expo dla szybszego wsparcia i testowania)
+- `[x]` Konfiguracja stanu aplikacji (Zustand/Context API) oraz `React Navigation`
+- `[x]` System bazowy stylów (dostępność: wysokie kontrasty, duże czytelne przyciski)
 
 ## Faza 5: Widoki i Moduł Głosowy (Frontend)
-- `[ ]` Dashboard (Główny wielki przycisk Speech-to-Text oraz dzienne podsumowanie)
-- `[ ]` Interfejs rozpoznawania mowy (natywna biblioteka) z nasłuchem do strzała `api/parse`
-- `[ ]` Ekran Ręcznej Edycji / Zatwierdzania wraz ze wsparciem okienek "Alert Ostrzeżenie" po otrzymaniu jsona serwerowego
-- `[ ]` Ekran Historii (komponenty wykresów danych medycznych z osią czasu)
-- `[ ]` Moduł ustawień parametrów czasowych do ściągania i zapisywania pliku PDF w pamięci natywnej
+- `[x]` Dashboard (Główny wielki przycisk Speech-to-Text oraz dzienne podsumowanie)
+- `[x]` Interfejs rozpoznawania mowy (natywna biblioteka) z nasłuchem do strzała `api/parse` — hook `useVoiceInput` gotowy, fallback na ręczny tekst (pełne STT wymaga Development Build)
+- `[x]` Ekran Ręcznej Edycji / Zatwierdzania wraz ze wsparciem okienek "Alert Ostrzeżenie" po otrzymaniu jsona serwerowego
+- `[x]` Ekran Historii (komponenty wykresów danych medycznych z osią czasu — `victory-native`)
+- `[x]` Moduł ustawień parametrów czasowych do ściągania i zapisywania pliku PDF w pamięci natywnej (`expo-file-system` + `expo-sharing`)
 
 ## Faza 6: Testy Jednostkowe i Integracyjne (Akademickie)
-- `[ ]` Testy Kotlin dla Coroutines + weryfikacje za pomocą `MockK`
-- `[ ]` Testy Kotlin `WebFluxTest` sprawdzające reaktywną integrację
-- `[ ]` Testy React Native Testing Library do weryfikacji drzewa domowego i modułu podsłuchu NLP
+- `[x]` Testy Kotlin dla Coroutines + weryfikacje za pomocą `MockK`
+- `[x]` Testy Kotlin `WebFluxTest` sprawdzające reaktywną integrację
+- `[x]` Testy React Native Testing Library do weryfikacji drzewa domowego i modułu podsłuchu NLP
 
 ## Faza 7: Zebranie Pracy (Poddanie do Walkthrough)
 - `[ ]` Weryfikacja działania środowiska E2E (Wysłanie wypowiedzi, poprawienie wykresu, zapis do pdf).

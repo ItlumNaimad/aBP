@@ -12,6 +12,7 @@ import { useFocusEffect } from 'expo-router';
 import { useAppStore } from '../../store/useAppStore';
 import { getMeasurements } from '../../api/client';
 import { medicalColors } from '../../theme';
+import BloodPressureChart from '../../components/BloodPressureChart';
 import type { Measurement } from '../../store/useAppStore';
 import type { MD3Theme } from 'react-native-paper';
 
@@ -142,6 +143,9 @@ export default function HistoryScreen() {
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+          ListHeaderComponent={
+            <BloodPressureChart measurements={measurements} />
+          }
         />
       )}
     </View>

@@ -5,16 +5,18 @@ Dokument ten opisuje planowaną architekturę, podział na moduły oraz struktur
 ## User Review Required
 
 > [!IMPORTANT]
-> Przed rozpoczęciem właściwego programowania frontendu (Faza 4 oraz 5) wymaga się zatwierdzenia wybranych technologii kluczowych.
+> Technologie kluczowe zostały zatwierdzone i wdrożone:
 >
-> - Zaplanowano oparcie dostępności i wyglądu o UI **React Native Paper** ze względu na solidne wsparcie Material Design 3 i wbudowany motyw ciemny/jasny.
-> - Zaproponowano wykorzystanie pakietu **Zustand** jako global state manager.
+> - ✅ **React Native Paper** (Material Design 3) — motyw medyczny teal/cyan z powiększonymi czcionkami.
+> - ✅ **Zustand** — globalny zarządzacz stanu z persystencją AsyncStorage.
+> - ✅ **Victory Native** — interaktywne wykresy liniowe ciśnienia.
+> - ✅ **expo-file-system** v19 + **expo-sharing** — zapis i udostępnianie PDF.
 
 ## Proposed Changes
 
 ### Architektura Aplikacji Mobilnej (Frontend - Faza 4 i 5)
 
-Aplikacja kliencka zostanie zbudowana w środowisku React Native (z użyciem menedżera procesów Expo) ze specyficznym ukierunkowaniem na urządzenia z systemem **Android**. Ze względu na grupę docelową (osoby starsze, niedowidzące), zdefiniowano główne filary interfejsu: olbrzymie cele dotykowe i jasna paleta konstrastująca.
+Aplikacja kliencka została zbudowana w środowisku React Native (z użyciem menedżera procesów Expo) ze specyficznym ukierunkowaniem na urządzenia z systemem **Android**. Ze względu na grupę docelową (osoby starsze, niedowidzące), zdefiniowano główne filary interfejsu: olbrzymie cele dotykowe i jasna paleta kontrastująca.
 
 #### [NEW] `Frontend/app/`
 
@@ -23,8 +25,9 @@ Folder odpowiedzialny za file-based routing w standardzie dostarczanym przez **E
 - `/app/_layout.tsx` - Główny provider ułatwiający ładowanie i aplikację wspólnego motywu (`ThemeProvider`) na całą aplikację.
 - `/app/index.tsx` - Główny hub powitalny aplikacji; widok logowania i identyfikacji pacjenta.
 - `/app/(tabs)/_layout.tsx` - Nawigacja dolna ze skalowanymi ikonami dla głównego pulpitu.
-- `/app/(tabs)/dashboard.tsx` - Zestawienie wskaźników z ogromnym polem mikrofonu przygotowanym pod wstrzyknięcie sygnału Audio.
-- `/app/(tabs)/history.tsx` - Prosty wylistowany zbiór historii bazy danych, z odpowiednimi ikonami "strzałek w górę/w dół" przy anomaliach medycznych.
+- `/app/(tabs)/dashboard.tsx` - Zestawienie wskaźników z ogromnym polem mikrofonu, kartą podsumowania statystyk, dialogiem edycji i potwierdzenia AI.
+- `/app/(tabs)/history.tsx` - Lista historii pomiarów z interaktywnym wykresem liniowym (`victory-native`) oraz oznaczeniami anomalii.
+- `/app/(tabs)/settings.tsx` - Przełącznik motywu, pobieranie raportu PDF na urządzenie, wylogowanie.
 
 #### [NEW] `Frontend/store/`
 
@@ -36,7 +39,23 @@ Zarządzanie kluczowym stanem aplikacji przez platformę **Zustand**:
 
 Moduły wiążące interfejs UI z logiką backendową Reaktywną postawioną w WSL:
 
-- `/api/client.ts` - Ustalenie klasy wrappera na domyślny protokół do wysyłania (bazujący na bibliotece Axios lub prostym `fetch`), przekierowany na port 8080 lokalnej maszyny.
+- `/api/client.ts` - Wrapper na Axios z automatycznym wykrywaniem środowiska (Android emulator/fizyczny telefon/web), przekierowany na port 8080 hosta. Zawiera funkcję `savePdfToDevice` wykorzystującą `expo-file-system` v19 i `expo-sharing`.
+
+#### [NEW] `Frontend/components/`
+
+Komponenty wielorazowe:
+
+- `/components/BloodPressureChart.tsx` - Interaktywny wykres liniowy ciśnienia (SYS/DIA/Puls) oparty o `victory-native` z legendą, tooltipem na dotyk i chronologiczną osią czasu.
+
+#### [NEW] `Frontend/hooks/`
+
+Hooki abstrakcyjne:
+
+- `/hooks/useVoiceInput.ts` - Abstrakcyjny hook opakowujący logikę STT. Obecnie: fallback na ręczny tekst. Interfejs przygotowany do podpięcia `@react-native-voice/voice` w Development Build.
+
+#### [NEW] `Frontend/babel.config.js`
+
+Konfiguracja Babel z pluginem `react-native-reanimated/plugin` (wymagany przez `victory-native`).
 
 ### Architektura Backendowa (Zrealizowane Wcześniej)
 

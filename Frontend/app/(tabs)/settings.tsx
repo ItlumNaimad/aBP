@@ -13,7 +13,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAppStore } from '../../store/useAppStore';
-import { downloadReport } from '../../api/client';
+import { savePdfToDevice } from '../../api/client';
 import type { MD3Theme } from 'react-native-paper';
 
 /**
@@ -36,8 +36,8 @@ export default function SettingsScreen() {
 
     setDownloadingPdf(true);
     try {
-      await downloadReport(user.id);
-      Alert.alert('✅ Gotowe', 'Raport PDF został pobrany pomyślnie.');
+      await savePdfToDevice(user.id);
+      Alert.alert('✅ Gotowe', 'Raport PDF został pobrany i udostępniony.');
     } catch (e: any) {
       Alert.alert(
         'Błąd',

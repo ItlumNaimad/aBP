@@ -23,6 +23,7 @@ import { useFocusEffect } from 'expo-router';
 import { useAppStore } from '../../store/useAppStore';
 import { parseVoiceText, saveMeasurement, getMeasurements } from '../../api/client';
 import { medicalColors } from '../../theme';
+import { useVoiceInput } from '../../hooks/useVoiceInput';
 import type { MD3Theme } from 'react-native-paper';
 
 /**
@@ -265,6 +266,54 @@ export default function DashboardScreen() {
         </Surface>
       )}
 
+      {/* ————— PODSUMOWANIE STATYSTYK ————— */}
+      {measurements.length >= 2 && (() => {
+        const avgSys = Math.round(measurements.reduce((s, m) => s + m.systolic, 0) / measurements.length);
+        const avgDia = Math.round(measurements.reduce((s, m) => s + m.diastolic, 0) / measurements.length);
+        const avgPulse = Math.round(measurements.reduce((s, m) => s + m.pulse, 0) / measurements.length);
+        const anomalyCount = measurements.filter((m) => m.isAnomaly).length;
+        const statusInfo = getStatusInfo(avgSys, avgDia);
+
+        return (
+          <Surface style={styles.summaryCard} elevation={1}>
+            <Text variant="titleMedium" style={styles.cardTitle}>
+              Podsumowanie ({measurements.length} pomiarów)
+            </Text>
+            <Divider style={{ marginVertical: 8 }} />
+
+            <View style={styles.metricsRow}>
+              <View style={styles.metricBox}>
+                <Text variant="bodySmall" style={styles.metricLabel}>Śr. SYS</Text>
+                <Text variant="headlineSmall" style={[styles.metricValue, { color: statusInfo.color }]}>
+                  {avgSys}
+                </Text>
+              </View>
+              <View style={styles.metricBox}>
+                <Text variant="bodySmall" style={styles.metricLabel}>Śr. DIA</Text>
+                <Text variant="headlineSmall" style={[styles.metricValue, { color: statusInfo.color }]}>
+                  {avgDia}
+                </Text>
+              </View>
+              <View style={styles.metricBox}>
+                <Text variant="bodySmall" style={styles.metricLabel}>Śr. Puls</Text>
+                <Text variant="headlineSmall" style={styles.metricValue}>
+                  {avgPulse}
+                </Text>
+              </View>
+            </View>
+
+            {anomalyCount > 0 && (
+              <View style={[styles.statusBadge, { backgroundColor: medicalColors.danger + '20' }]}>
+                <MaterialCommunityIcons name="alert" size={18} color={medicalColors.danger} />
+                <Text style={[styles.statusText, { color: medicalColors.danger }]}>
+                  Anomalie: {anomalyCount}
+                </Text>
+              </View>
+            )}
+          </Surface>
+        );
+      })()}
+
       {/* ————— DIALOG RĘCZNEGO WPISYWANIA TEKSTU ————— */}
       <Portal>
         <Dialog
@@ -452,6 +501,13 @@ const makeStyles = (theme: MD3Theme) =>
     emptyText: {
       textAlign: 'center',
       color: theme.colors.onSurfaceVariant,
+    },
+    summaryCard: {
+      width: '100%',
+      borderRadius: 20,
+      padding: 20,
+      marginTop: 16,
+      backgroundColor: theme.colors.elevation.level1,
     },
     dialog: {
       borderRadius: 24,
