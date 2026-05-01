@@ -111,7 +111,7 @@ Oto przyporządkowanie użytych mechanizmów Coroutines z `Backend` do ich odpow
 
 ---
 
-## Komendy Użyte w Projekcie (Dokumentacja)
+## Komendy Użyte w Projekcie i do uruchomienia(Dokumentacja)
 
 ### Backend (Kotlin / Spring Boot)
 
@@ -172,3 +172,92 @@ cd Frontend && npx expo run:android
 | `expo-file-system` | ~19.0.21 | Zapis plików na urządzeniu |
 | `expo-sharing` | ~14.0.8 | Natywny dialog udostępniania plików |
 | `@react-native-async-storage/async-storage` | ^3.0.2 | Persystentny storage (motyw) |
+
+---
+
+## Konfiguracja i Uruchamianie (F.A.Q)
+
+### Gdzie definiowane są stałe i klucze API (np. do Gemini)?
+Głównym punktem konfiguracji backendu Spring Boot jest plik YAML:
+`Backend/src/main/resources/application.yaml`
+
+To w nim znajduje się baza konfiguracji m.in. dostępu do bazy danych PostgreSQL. Klucz API do serwisu Gemini jest w nim zmapowany jako referencja do zmiennej środowiskowej systemu operacyjnego: `${GEMINI_API_KEY}`. 
+Zamiast "twardo wpisywać" klucz w kodzie, co jest złą praktyką (niebezpieczeństwo wycieku na GitHub), aplikacja ładuje go dynamicznie. Aby go dostarczyć masz 2 główne drogi:
+1. **Przez komendę w terminalu**: Podaj go jako zmienną lokalną podczas uruchamiania backendu:
+   ```bash
+   GEMINI_API_KEY="twoj-klucz-api" ./gradlew bootRun
+   ```
+2. **Eksport w OS (Zmienne środowiskowe)**: Ustaw w terminalu `export GEMINI_API_KEY="twoj-klucz-api"` przed uruchomieniem IDE lub dockera. Możesz także skonfigurować go w pliku `.env` jeśli używasz pluginu `spring-dotenv` lub narzędzi ładujących zmienne przed wywołaniem Javy.
+
+### Gdzie są dane do logowania i jacy są użytkownicy?
+Aplikacja została zaprojektowana w trybie studenckim/bezbarierowym, gdzie nie wymaga się skomplikowanej rejestracji z hasłem, weryfikacją e-mail ani tokenami JWT.
+Mechanizm logowania (zaimplementowany w `Backend/src/main/kotlin/com/adb/backend/service/UserService.kt`) opiera się na prostym modelu **"Login or Create"**:
+* Podczas wpisywania dowolnej nazwy na ekranie mobilnym (np. wpiszesz `JanKowalski`), backend sprawdza czy w tabeli `app_users` w PostgreSQL taki użytkownik już istnieje.
+* Jeśli **tak**: Zwraca jego unikalny klucz UUID i autoryzuje front, pobierając z bazy jego historyczne pomiary medyczne.
+* Jeśli **nie**: Aplikacja automatycznie, w locie utworzy w bazie nowy profil dla `JanKowalski` i wejdzie do czystego Dashboardu.
+
+Dzięki temu *nie ma pliku z predefiniowanymi logami/użytkownikami*. Po prostu wpisz dowolną nazwę w aplikacji, aby rozpocząć!
+
+---
+
+## Procedura Uruchamiania i Różne Konfiguracje
+
+Aplikacja składa się z dwóch niezależnych modułów (Backend i Frontend), które muszą działać jednocześnie, by komunikacja API funkcjonowała poprawnie.
+
+### 1. Uruchamianie Bazy Danych (Docker PostgreSQL)
+Aplikacja wykorzystuje silnik PostgreSQL uruchamiany w izolowanym kontenerze. Zamiast instalować bazę bezpośrednio w systemie (co "brudzi" OS), korzystamy z pliku `docker-compose.yml`.
+*   **Start bazy:** W terminalu wejdź do folderu `Backend` i wpisz:
+    ```bash
+    docker compose up -d
+    ```
+    Flaga `-d` uruchamia kontener w tle (detached). Baza wystawi się na porcie `5432` z loginem `abpuser` i hasłem `abppassword`.
+*   **Zatrzymywanie bazy:**
+    ```bash
+    docker compose down
+    ```
+*   **Trwałość Danych:** Zdefiniowaliśmy wolumen `postgres_data`, co oznacza, że wyłączenie czy zresetowanie kontenera *nie usunie* Twoich pomiarów ani użytkowników! Dane przetrwają restart.
+
+### 2. Uruchamianie Backendu (Spring Boot WebFlux)
+Mając uruchomioną w tle bazę danych z dockera, odpal serwer API.
+```bash
+cd Backend
+# Z eksportem klucza (zalecane)
+GEMINI_API_KEY="twój-klucz" ./gradlew bootRun
+```
+*Serwer wystartuje na porcie `8080` (nasłuchując jako `http://localhost:8080`).*
+
+### 3. Uruchamianie Frontendu (React Native / Expo)
+Frontend uruchamiany jest przez narzędzie Metro Bundler i posiada kilka trybów roboczych:
+```bash
+cd Frontend
+npm start
+```
+Po uruchomieniu serwera paczek zobaczysz interaktywne menu w konsoli (wciśnij na klawiaturze wybraną literę):
+*   **`w` (Tryb Webowy)**: Otworzy aplikację w przeglądarce (`http://localhost:8081`). Idealne do szybkiego testowania i używania myszki bez emulatorów. Pamiętaj, że w przeglądarce zamiast interaktywnych natywnych wykresów załaduje się czytelna **Tabela Danych** (zaprojektowana jako niezawodny _Wariant B_ na Web).
+*   **`a` (Tryb Android)**: Odpali aplikację na włączonym emulatorze Android Studio (wymaga wpierw odpalenia programu AVD i np. Pixela). Tu zadziałają pełne sprzętowe animacje wykresów z użyciem `victory-native` i Reanimated.
+*   **Skanowanie QR (Fizyczny Telefon)**: Najlepsza i najpłynniejsza opcja. Jeśli masz w smartfonie zainstalowaną aplikację **Expo Go** (ze sklepu Android/iOS) i jesteś w tej samej sieci WiFi, zeskanuj aparatem kod QR z terminala. Aplikacja uruchomi się na żywo na Twoim telefonie z natywną wydajnością! *(Uwaga: W systemie WSL sieci potrafią się rozmijać. Wtedy najłatwiej wystartować komendą `npx expo start --tunnel`, aby skorzystać z bezpiecznego tunelu publicznego bez martwienia się o LAN i zaporę).*
+
+---
+
+## Jak wprowadzać modyfikacje w strukturze Bazy Danych?
+
+Spring Boot w tym projekcie (w modelu reaktywnym R2DBC) nie opiera się na pełnym silniku mapowania "Hibernate", który samoistnie i magicznie generuje ustrukturyzowane kolumny. Cechuje się to znacznie wyższą szybkością, ale wymusza od nas ręczną konfigurację klasycznymi skryptami SQL.
+
+Główny schemat znajduje się pod ścieżką:
+`Backend/src/main/resources/schema.sql`
+
+Plik ten uruchamia się samoistnie **przy każdym włączeniu aplikacji backendowej** (`bootRun`). Używa komend typu `CREATE TABLE IF NOT EXISTS`, przez co jeśli tabele już powstały – Spring pozostawia je nietknięte.
+
+Jeśli zmienisz strukturę w klasach Kotlin (np. dodasz zmienną `email` w `AppUser`) i **chcesz przenieść zmiany do bazy**, masz dwie ścieżki:
+
+1. **Dopisanie Modyfikacji (Produkcyjnie)**
+   Otwórz plik `schema.sql` i dopisz na samym dole instrukcję wymuszającą na bazie aktualizację tabeli, np.:
+   `ALTER TABLE app_users ADD COLUMN IF NOT EXISTS email VARCHAR(100);`
+2. **Całkowity Reset Bazy (Tylko w procesie testowym!)**
+   Jeśli chcesz wyzerować wszystko (skasować istniejących pacjentów i pomiary), po prostu wymuś zniszczenie zabezpieczonego kontenera z danymi. Następne wywołanie utworzy tabelę całkiem "na nowo" prosto ze `schema.sql`.
+   ```bash
+   cd Backend
+   docker compose down -v  # Magiczna flaga "-v" całkowicie kasuje zabezpieczony wolumen postgres_data!
+   docker compose up -d    # Tworzy znów czystą bazę
+   ./gradlew bootRun       # Tworzy nowiutkie struktury z pliku SQL
+   ```

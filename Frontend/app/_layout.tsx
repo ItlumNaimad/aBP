@@ -33,19 +33,5 @@ function RootLayoutContent() {
 }
 
 export default function RootLayout() {
-  if (Platform.OS === 'web') {
-    const { WithSkiaWeb } = require('@shopify/react-native-skia/lib/module/web');
-    return (
-      <WithSkiaWeb 
-        getComponent={() => RootLayoutContent} 
-        fallback={
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Text>Ładowanie silnika wykresów...</Text>
-          </View>
-        } 
-      />
-    );
-  }
-
   return <RootLayoutContent />;
 }
