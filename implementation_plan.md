@@ -95,3 +95,10 @@ Weryfikacja zmian po stronie mobilnej przebiegnie następująco:
 
 - Implementacja testów renderowania jednostkowego za pomocą `@testing-library/react-native`.
 - Testy na prawidłowe budowanie logicznych stanów redukcyjnych w plikach zarządzających `useAppStore.ts`.
+
+## TESTY
+# Backend (nie wymaga bazy danych!)
+cd Backend && ./gradlew test
+
+# Frontend (nie wymaga emulatora!)
+cd Frontend && npx jest --verbose

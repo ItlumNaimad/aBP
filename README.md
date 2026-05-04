@@ -150,9 +150,202 @@ cd Frontend && npx expo start -c
 # Kompilacja TypeScript (sprawdzenie typów bez emitowania kodu)
 cd Frontend && ./node_modules/.bin/tsc --noEmit
 
+# Uruchomienie testów jednostkowych (Jest)
+cd Frontend && npx jest
+
 # Development Build (wymagany dla natywnych modułów jak STT)
 cd Frontend && npx expo prebuild
 cd Frontend && npx expo run:android
+```
+
+---
+
+## Testowanie Aplikacji — Szczegółowa Dokumentacja
+
+Projekt posiada dwa niezależne zestawy testów — po jednym dla Backendu (Kotlin/JUnit 5) i Frontendu (React Native/Jest). Każdy z nich można uruchomić **niezależnie od drugiego** bez konieczności posiadania działającego serwera czy bazy danych (testy są w pełni zmockowane).
+
+### Architektura Testów — Przegląd
+
+| Warstwa | Framework | Typ testów | Wymaga bazy/serwera? |
+|---|---|---|---|
+| **Backend** — Serwisy | JUnit 5 + MockK + Coroutines Test | Jednostkowe (unit) | ❌ Nie |
+| **Backend** — Kontrolery | JUnit 5 + WebFluxTest + SpringMockK | Integracyjne (WebFlux slice) | ❌ Nie (mockowany kontekst) |
+| **Frontend** — Store (Zustand) | Jest + Testing Library | Jednostkowe (unit) | ❌ Nie |
+| **Frontend** — Komponenty | Jest + Testing Library RN | Jednostkowe z renderowaniem | ❌ Nie |
+| **Frontend** — Ekrany | Jest + Testing Library RN | Jednostkowe z interakcją | ❌ Nie |
+
+---
+
+### 🔧 Testy Backendu (Kotlin / Spring Boot WebFlux)
+
+#### Wymagania wstępne
+- **Java 17+** zainstalowana w systemie (zalecane: `openjdk-17-jdk` na Ubuntu/WSL)
+- **Gradle Wrapper** (`./gradlew`) — dostarczany z projektem, nie wymaga osobnej instalacji
+- **Baza danych NIE jest wymagana** — testy używają mocków (`MockK` / `SpringMockK`) zamiast prawdziwej bazy PostgreSQL
+
+#### Komenda uruchomienia
+
+```bash
+# Uruchomienie WSZYSTKICH testów (z katalogu głównego projektu lub Backend)
+cd Backend && ./gradlew test
+```
+
+> **Uwaga:** Test `BackendApplicationTests.contextLoads()` jest oznaczony jako `@Disabled`, ponieważ wymaga żywej bazy PostgreSQL. Pozostałe testy używają `@WebFluxTest` i mocków — działają bez zewnętrznych zależności.
+
+#### Dodatkowe przydatne komendy Gradle
+
+```bash
+# Uruchomienie testów z pełnym logowaniem (widzisz każdy test PASSED/FAILED)
+cd Backend && ./gradlew test --info
+
+# Uruchomienie testów z czyszczeniem cache (wymuszenie ponownego uruchomienia)
+cd Backend && ./gradlew clean test
+
+# Uruchomienie konkretnej klasy testowej
+cd Backend && ./gradlew test --tests "com.adb.backend.service.MeasurementServiceTest"
+
+# Uruchomienie konkretnego testu (metody)
+cd Backend && ./gradlew test --tests "com.adb.backend.service.MeasurementServiceTest.high systolic triggers anomaly"
+```
+
+#### Inwentarz testów Backendu (6 plików / ~25 przypadków testowych)
+
+| Plik testowy | Co testuje | Liczba testów |
+|---|---|---|
+| `MeasurementServiceTest.kt` | Logika detekcji anomalii medycznych (twarde progi WHO: SYS≥180, DIA≥110, Puls>120/<40; kryteria względne pacjenta: odchylenie >25% od średniej historii) | 8 |
+| `GeminiServiceTest.kt` | Tryb mock Gemini AI (klucz API pusty/="mock"), parsowanie JSON odpowiedzi, obsługa znaczników markdown | 4 |
+| `UserControllerWebFluxTest.kt` | Endpoint `POST /api/users/login` — logowanie nowego i istniejącego użytkownika | 2 |
+| `MeasurementControllerWebFluxTest.kt` | Endpointy `GET/POST /api/measurements/{userId}` — pobieranie listy, zapis nowego pomiaru, flaga anomalii | 4 |
+| `ReportControllerWebFluxTest.kt` | Endpoint `GET /api/reports/{userId}/download` — generacja PDF, nagłówki HTTP, content-type | 2 |
+| `BackendApplicationTests.kt` | Ładowanie kontekstu Spring (**@Disabled** — wymaga żywej bazy) | 1 (wyłączony) |
+
+#### Raport wyników Backendu (HTML)
+
+Po uruchomieniu `./gradlew test`, Gradle automatycznie generuje szczegółowy raport HTML:
+
+```
+Backend/build/reports/tests/test/index.html
+```
+
+Otwórz ten plik w przeglądarce, aby zobaczyć:
+- ✅ Listę wszystkich testów z wynikami PASSED/FAILED
+- ⏱️ Czas wykonania każdego testu
+- 📋 Stacktrace dla testów, które nie przeszły
+- 📊 Podsumowanie statystyczne (% zdanych)
+
+---
+
+### 📱 Testy Frontendu (React Native / Jest)
+
+#### Wymagania wstępne
+- **Node.js 18+** zainstalowany w systemie
+- **Zainstalowane zależności:** `cd Frontend && npm install` (jeśli nie zostały zainstalowane wcześniej)
+- **Emulator/telefon NIE jest wymagany** — testy renderują komponenty w środowisku Node.js (JSDOM)
+
+#### Komenda uruchomienia
+
+```bash
+# Uruchomienie WSZYSTKICH testów
+cd Frontend && npx jest
+
+# Alternatywnie — z flag verbose (widoczne nazwy każdego testu)
+cd Frontend && npx jest --verbose
+```
+
+#### Dodatkowe przydatne komendy Jest
+
+```bash
+# Uruchomienie testów z pokryciem kodu (code coverage)
+cd Frontend && npx jest --coverage
+
+# Uruchomienie testów w trybie watch (automatyczne ponowne uruchomienie po zmianach)
+cd Frontend && npx jest --watch
+
+# Uruchomienie konkretnego pliku testowego
+cd Frontend && npx jest __tests__/store/useAppStore.test.ts
+
+# Uruchomienie testów pasujących do wzorca nazwy
+cd Frontend && npx jest --testNamePattern="loguje użytkownika"
+```
+
+#### Inwentarz testów Frontendu (3 pliki / ~8 przypadków testowych)
+
+| Plik testowy | Co testuje | Liczba testów |
+|---|---|---|
+| `__tests__/store/useAppStore.test.ts` | Store Zustand: stan początkowy (niezalogowany), akcja `setLogin`, akcja `logout`, przełączanie motywu `toggleTheme` | 4 |
+| `__tests__/components/BloodPressureChart.test.tsx` | Komponent wykresu: informacja o braku danych (0 i 1 pomiar), renderowanie legendy i tytułu (≥2 pomiary) | 3 |
+| `__tests__/app/LoginScreen.test.tsx` | Ekran logowania: renderowanie pól i przycisku, walidacja pustego pola (komunikat błędu) | 2 |
+
+#### Konfiguracja testowa Frontendu
+
+| Plik | Rola |
+|---|---|
+| `jest.config.js` | Preset `jest-expo`, plik setupu, wzorce `transformIgnorePatterns` dla paczek React Native |
+| `jestSetup.js` | Mockowanie `react-native-reanimated` i `react-native-gesture-handler` (niezbędne bo testy nie mają natywnego runtime) |
+| `__mocks__/@react-native-async-storage/async-storage.js` | Mock AsyncStorage (persystencja danych lokalna działa w testach bez urządzenia) |
+
+#### Raport pokrycia kodu (Coverage)
+
+Po uruchomieniu `npx jest --coverage`, Jest wygeneruje raport w katalogu:
+
+```
+Frontend/coverage/lcov-report/index.html
+```
+
+Raport zawiera:
+- 📊 Procentowe pokrycie: Statements, Branches, Functions, Lines
+- 🔍 Podświetlenie niepokrytych linii w kodzie źródłowym
+- 📁 Pokrycie per-plik i per-katalog
+
+---
+
+### 🖥️ Gdzie uruchamiać testy? (Terminal / IDE)
+
+#### Rekomendacja: Terminal WSL (najszybsza i najprostsza metoda)
+
+**Oba zestawy testów można uruchomić bezproblemowo z dowolnego terminala w WSL Ubuntu**, w tym z terminala wbudowanego w Google Antigravity. Nie jest wymagane żadne IDE.
+
+```bash
+# BACKEND — wystarczy jedna komenda:
+cd /home/naimad/projekty/aBP/Backend && ./gradlew test
+
+# FRONTEND — wystarczy jedna komenda:
+cd /home/naimad/projekty/aBP/Frontend && npx jest --verbose
+```
+
+#### Porównanie środowisk uruchomieniowych
+
+| Środowisko | Backend (Gradle) | Frontend (Jest) | Zalety | Wady |
+|---|---|---|---|---|
+| **Terminal WSL (Antigravity / bash)** | ✅ Pełne wsparcie | ✅ Pełne wsparcie | Najszybszy start, zero konfiguracji, działa od razu | Brak GUI debuggera |
+| **IntelliJ IDEA** | ✅ Najlepsze wsparcie | ⚠️ Możliwe, ale nienaturalne | Klikanie ▶ przy testach, debugger, refactoring Kotlin | Ciężkie IDE, wymaga licencji Ultimate dla pełnego Spring |
+| **WebStorm** | ⚠️ Nie obsługuje Kotlin/Gradle | ✅ Najlepsze wsparcie | Klikanie ▶ przy testach Jest, debugger JS/TS | Nie obsłuży Backendu, wymaga licencji |
+| **VS Code** | ✅ Przez terminal/plugin | ✅ Przez terminal/plugin | Lekki, darmowy, wielojęzykowy | Wymaga konfiguracji pluginów |
+
+#### Kiedy użyć IDE zamiast terminala?
+
+- **IntelliJ IDEA** — zalecane gdy chcesz **debugować** test Backendu krok po kroku (breakpointy w Kotlin), lub szybko uruchamiać pojedyncze testy kliknięciem ikony ▶ przy nazwie metody.
+- **WebStorm** — zalecane gdy chcesz **debugować** test Frontendu z breakpointami w TypeScript/JSX.
+- **Terminal (Antigravity / bash)** — zalecane do **szybkiego uruchomienia wszystkich testów** i weryfikacji, że nic się nie zepsuło (CI-style). To jest najczęstszy scenariusz.
+
+> **Podsumowanie:** Na potrzeby studenckiego projektu **terminal WSL w Antigravity całkowicie wystarczy** do uruchomienia i weryfikacji testów. IDE (IntelliJ/WebStorm) są przydatne tylko gdy potrzebujesz zaawansowanego debugowania z breakpointami.
+
+---
+
+### 📋 Szybka ściągawka — Uruchomienie wszystkich testów
+
+```bash
+# ======== BACKEND ========
+cd /home/naimad/projekty/aBP/Backend
+./gradlew test
+# Wynik: BUILD SUCCESSFUL = wszystkie testy przeszły
+# Raport HTML: Backend/build/reports/tests/test/index.html
+
+# ======== FRONTEND ========
+cd /home/naimad/projekty/aBP/Frontend
+npx jest --verbose
+# Wynik: Tests: X passed, X total
+# Pokrycie: npx jest --coverage → Frontend/coverage/lcov-report/index.html
 ```
 
 ### Zainstalowane Zależności Frontendowe
