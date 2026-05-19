@@ -2,7 +2,7 @@ spring:
   application:
     name: backend
   r2dbc:
-    url: r2dbc:postgresql://localhost:5432/abpdb
+    url: r2dbc:postgresql://localhost:5433/abpdb
     username: abpuser
     password: abppassword
   sql:

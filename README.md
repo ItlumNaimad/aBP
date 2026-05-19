@@ -454,3 +454,14 @@ Jeśli zmienisz strukturę w klasach Kotlin (np. dodasz zmienną `email` w `AppU
    docker compose up -d    # Tworzy znów czystą bazę
    ./gradlew bootRun       # Tworzy nowiutkie struktury z pliku SQL
    ```
+
+---
+
+## Dziennik prac i postępy (Dzisiaj)
+
+- **Unifikacja interfejsu (Frontend)**: Zrezygnowano z wielkiego przycisku mikrofonu na głównym ekranie na rzecz przejrzystego przycisku "+ Dodaj wynik". Wdrożono spójne okno dialogowe pozwalające na ręczne dodawanie wyników oraz wywoływanie asystenta AI z poziomu jednego zunifikowanego formularza.
+- **Dodano wizualne statusy asystenta AI**: Mikrofon zastąpiono responsywnym przyciskiem "Wyślij do AI", który podczas wczytywania (`isAiParsing`) blokuje się i wyświetla spinner oraz napis "Wysyłanie do AI...".
+- **Aktualizacja nazwy modelu Gemini**: Zmieniono docelowy endpoint na `gemini-flash-latest`, zgodnie z najnowszą, sprawdzoną w PHP specyfikacją i dokumentacją Google Studio API, eliminując błąd 404 (Not Found).
+- **Rozwiązanie problemu CORS przy zmianie portu Expo**: Dodano do `CorsConfig.kt` zaufane źródło dla portu `8082` (oraz `127.0.0.1:8082`), co uchroniło komunikację przed odrzuceniem w przypadku, gdy środowisko Node/Expo zajęło kolejny port z powodu zawieszonych procesów.
+- **Rozwiązanie problemów ze środowiskiem (Zmienne systemowe Gradle)**: Zweryfikowano działanie zmiennych środowiskowych u daemona Gradle – od teraz rekomendowanym i bezpiecznym sposobem uruchamiania aplikacji ze swoim prywatnym kluczem API jest przekazanie go bezpośrednio jako argument: `--args='--gemini.api-key="KLUCZ"'`, co gwarantuje prawidłowe połączenie z backendem Google.
+- **Zakończenie i certyfikacja**: Odznaczono jako wykonane wszystkie zadania w `tasks.md` w fazie 7. Środowisko E2E pomyślnie przeszło weryfikację.

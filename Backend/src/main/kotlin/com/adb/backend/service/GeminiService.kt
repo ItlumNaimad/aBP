@@ -44,7 +44,7 @@ class GeminiService(
         )
 
         val response = geminiWebClient.post()
-            .uri("/gemini-1.5-flash-latest:generateContent?key=${config.apiKey}")
+            .uri("/gemini-flash-latest:generateContent?key=${config.apiKey}")
             .bodyValue(requestBody)
             .retrieve()
             .bodyToMono<GeminiResponse>()

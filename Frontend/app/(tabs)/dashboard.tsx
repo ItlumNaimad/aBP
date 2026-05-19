@@ -42,18 +42,17 @@ export default function DashboardScreen() {
   const pendingParsed = useAppStore((s) => s.pendingParsed);
   const setPendingParsed = useAppStore((s) => s.setPendingParsed);
 
-  const [isListening, setIsListening] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showAddDialog, setShowAddDialog] = useState(false);
 
-  // Edytowalne wartości w dialogu potwierdzenia
-  const [editSys, setEditSys] = useState('');
-  const [editDia, setEditDia] = useState('');
-  const [editPulse, setEditPulse] = useState('');
+  // Wartości formularza dodawania pomiaru
+  const [addSys, setAddSys] = useState('');
+  const [addDia, setAddDia] = useState('');
+  const [addPulse, setAddPulse] = useState('');
 
-  // Pole ręcznego wpisywania tekstu (zastępstwo mikrofonu do testów)
-  const [manualText, setManualText] = useState('');
-  const [showManualInput, setShowManualInput] = useState(false);
+  // Stan asystenta AI
+  const [aiText, setAiText] = useState('');
+  const [isAiParsing, setIsAiParsing] = useState(false);
 
   const lastMeasurement = measurements.length > 0 ? measurements[0] : null;
 
@@ -67,82 +66,6 @@ export default function DashboardScreen() {
       }
     }, [user?.id])
   );
-
-  /**
-   * Obsługa nasłuchiwania mowy.
-   * Na razie: dialog do wklejenia tekstu (moduł @react-native-voice/voice
-   * wymaga Development Build — zostanie dodany po konfiguracji prebuild).
-   */
-  const handleMicPress = () => {
-    setShowManualInput(true);
-  };
-
-  const handleSendVoiceText = async (text: string) => {
-    if (!text.trim()) return;
-
-    setIsListening(true);
-    setShowManualInput(false);
-
-    try {
-      const parsed = await parseVoiceText(text.trim());
-      setPendingParsed(parsed);
-      setEditSys(String(parsed.systolic));
-      setEditDia(String(parsed.diastolic));
-      setEditPulse(String(parsed.pulse));
-      setShowConfirmDialog(true);
-    } catch (e: any) {
-      Alert.alert(
-        'Błąd parsowania',
-        e?.response?.data?.message || 'Nie udało się przetworzyć tekstu. Spróbuj ponownie.'
-      );
-    } finally {
-      setIsListening(false);
-      setManualText('');
-    }
-  };
-
-  const handleConfirmSave = async () => {
-    if (!user?.id) return;
-
-    const sys = parseInt(editSys, 10);
-    const dia = parseInt(editDia, 10);
-    const pulse = parseInt(editPulse, 10);
-
-    if (isNaN(sys) || isNaN(dia) || isNaN(pulse)) {
-      Alert.alert('Błąd', 'Wszystkie pola muszą być liczbami.');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const saved = await saveMeasurement(user.id, {
-        systolic: sys,
-        diastolic: dia,
-        pulse: pulse,
-      });
-
-      // Jeśli wykryto anomalię — pokaż ostrzeżenie
-      if (saved.isAnomaly) {
-        Alert.alert(
-          '⚠️ Wykryto anomalię',
-          'Twoje wartości ciśnienia znacząco odbiegają od normy. Skonsultuj się z lekarzem.',
-          [{ text: 'Rozumiem', style: 'default' }]
-        );
-      } else {
-        Alert.alert('✅ Zapisano', 'Pomiar został zapisany pomyślnie.');
-      }
-
-      // Odśwież listę pomiarów
-      const refreshed = await getMeasurements(user.id);
-      setMeasurements(refreshed);
-      setPendingParsed(null);
-    } catch (e: any) {
-      Alert.alert('Błąd zapisu', 'Nie udało się zapisać pomiaru.');
-    } finally {
-      setIsSaving(false);
-      setShowConfirmDialog(false);
-    }
-  };
 
   /**
    * Określ kolor i etykietę pomiaru wg norm medycznych
@@ -167,32 +90,29 @@ export default function DashboardScreen() {
         Witaj, {user?.username || 'Użytkowniku'} 👋
       </Text>
       <Text variant="bodyLarge" style={styles.greetingSub}>
-        Powiedz swój wynik ciśnienia lub wpisz ręcznie
+        Dodaj pomiar ręcznie lub za pomocą asystenta głosowego AI
       </Text>
 
-      {/* ————— WIELKI PRZYCISK MIKROFONU ————— */}
-      <Pressable onPress={handleMicPress} disabled={isListening}>
-        <Surface
-          style={[
-            styles.micButton,
-            {
-              backgroundColor: isListening
-                ? theme.colors.error
-                : theme.colors.primary,
-            },
-          ]}
-          elevation={4}
-        >
-          {isListening ? (
-            <ActivityIndicator size="large" color="#FFFFFF" />
-          ) : (
-            <MaterialCommunityIcons name="microphone" size={72} color="#FFFFFF" />
-          )}
-        </Surface>
-      </Pressable>
-      <Text variant="titleMedium" style={styles.micLabel}>
-        {isListening ? 'Analizuję…' : 'Naciśnij aby mówić'}
-      </Text>
+      {/* ————— PRZYCISK DODAJ WYNIK ————— */}
+      <Button
+        mode="contained"
+        icon={({ size, color }) => (
+          <MaterialCommunityIcons name="plus" size={28} color={color} />
+        )}
+        onPress={() => {
+          setAddSys('');
+          setAddDia('');
+          setAddPulse('');
+          setAiText('');
+          setShowAddDialog(true);
+        }}
+        style={styles.addButton}
+        contentStyle={styles.addButtonContent}
+        labelStyle={styles.addButtonLabel}
+        elevation={2}
+      >
+        Dodaj wynik
+      </Button>
 
       {/* ————— OSTATNI POMIAR ————— */}
       {lastMeasurement && (
@@ -314,90 +234,158 @@ export default function DashboardScreen() {
         );
       })()}
 
-      {/* ————— DIALOG RĘCZNEGO WPISYWANIA TEKSTU ————— */}
+      {/* ————— DIALOG DODAWANIA WYNIKU (FORMULARZ + AI) ————— */}
       <Portal>
         <Dialog
-          visible={showManualInput}
-          onDismiss={() => setShowManualInput(false)}
+          visible={showAddDialog}
+          onDismiss={() => {
+            if (!isSaving && !isAiParsing) {
+              setShowAddDialog(false);
+            }
+          }}
           style={styles.dialog}
         >
-          <Dialog.Title>Wpisz tekst do analizy</Dialog.Title>
-          <Dialog.Content>
-            <Text variant="bodyMedium" style={{ marginBottom: 12, color: theme.colors.onSurfaceVariant }}>
-              Wpisz to, co powiedziałbyś na głos, np.:{'\n'}
-              „Mam ciśnienie 135 na 85, puls 72"
+          <Dialog.Title style={styles.dialogTitle}>Nowy pomiar</Dialog.Title>
+          <Dialog.Content style={{ gap: 12 }}>
+            
+            {/* Formularz Ręczny */}
+            <Text variant="titleSmall" style={styles.sectionHeader}>
+              Wprowadź wartości ręcznie:
             </Text>
+            <View style={styles.formRow}>
+              <TextInput
+                label="SYS (skurczowe)"
+                value={addSys}
+                onChangeText={setAddSys}
+                keyboardType="numeric"
+                mode="outlined"
+                left={<TextInput.Icon icon="heart" color={theme.colors.primary} />}
+                style={styles.formInput}
+              />
+              <TextInput
+                label="DIA (rozkurczowe)"
+                value={addDia}
+                onChangeText={setAddDia}
+                keyboardType="numeric"
+                mode="outlined"
+                left={<TextInput.Icon icon="heart-outline" color={theme.colors.secondary} />}
+                style={styles.formInput}
+              />
+            </View>
             <TextInput
-              label="Twój tekst"
-              value={manualText}
-              onChangeText={setManualText}
+              label="Puls (tętno)"
+              value={addPulse}
+              onChangeText={setAddPulse}
+              keyboardType="numeric"
               mode="outlined"
-              multiline
-              numberOfLines={3}
-              style={{ fontSize: 17 }}
+              left={<TextInput.Icon icon="heart-pulse" color={medicalColors.danger} />}
+              style={styles.fullFormInput}
             />
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setShowManualInput(false)}>Anuluj</Button>
-            <Button
-              mode="contained"
-              onPress={() => handleSendVoiceText(manualText)}
-              disabled={!manualText.trim()}
-              icon="send"
-            >
-              Wyślij do AI
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
 
-      {/* ————— DIALOG POTWIERDZENIA WYNIKÓW (edytowalny) ————— */}
-      <Portal>
-        <Dialog
-          visible={showConfirmDialog}
-          onDismiss={() => setShowConfirmDialog(false)}
-          style={styles.dialog}
-        >
-          <Dialog.Title>Potwierdź wyniki pomiaru</Dialog.Title>
-          <Dialog.Content>
-            <Text variant="bodyMedium" style={{ marginBottom: 16, color: theme.colors.onSurfaceVariant }}>
-              AI przeanalizowało Twój tekst. Sprawdź wartości i popraw, jeśli trzeba:
+            <Divider style={{ marginVertical: 8 }} />
+
+            {/* Asystent Głosowy / AI */}
+            <Text variant="titleSmall" style={styles.sectionHeader}>
+              🎤 Użyj asystenta AI (mowa / tekst):
             </Text>
-            <TextInput
-              label="Ciśnienie skurczowe (SYS)"
-              value={editSys}
-              onChangeText={setEditSys}
-              keyboardType="numeric"
-              mode="outlined"
-              left={<TextInput.Icon icon="heart" />}
-              style={styles.confirmInput}
-            />
-            <TextInput
-              label="Ciśnienie rozkurczowe (DIA)"
-              value={editDia}
-              onChangeText={setEditDia}
-              keyboardType="numeric"
-              mode="outlined"
-              left={<TextInput.Icon icon="heart-outline" />}
-              style={styles.confirmInput}
-            />
-            <TextInput
-              label="Tętno (puls)"
-              value={editPulse}
-              onChangeText={setEditPulse}
-              keyboardType="numeric"
-              mode="outlined"
-              left={<TextInput.Icon icon="heart-pulse" />}
-              style={styles.confirmInput}
-            />
+            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+              Wpisz np. „moje ciśnienie to 125 na 82, puls 68”, a AI samo uzupełni pola wyżej!
+            </Text>
+            
+            <View style={styles.aiInputContainer}>
+              <TextInput
+                placeholder="Wpisz lub powiedz pomiar..."
+                value={aiText}
+                onChangeText={setAiText}
+                mode="outlined"
+                multiline
+                numberOfLines={2}
+                style={styles.aiTextInput}
+              />
+              <Button
+                mode="contained-tonal"
+                icon="send"
+                loading={isAiParsing}
+                disabled={isAiParsing || !aiText.trim()}
+                onPress={async () => {
+                  if (!aiText.trim()) {
+                    Alert.alert('Brak tekstu', 'Wpisz tekst, aby AI mogło go przeanalizować.');
+                    return;
+                  }
+                  setIsAiParsing(true);
+                  try {
+                    const parsed = await parseVoiceText(aiText.trim());
+                    setAddSys(String(parsed.systolic));
+                    setAddDia(String(parsed.diastolic));
+                    setAddPulse(String(parsed.pulse));
+                    Alert.alert('Sukces AI', 'Pola formularza zostały automatycznie uzupełnione!');
+                  } catch (e: any) {
+                    Alert.alert(
+                      'Błąd AI',
+                      e?.response?.data?.message || 'Nie udało się przeanalizować tekstu.'
+                    );
+                  } finally {
+                    setIsAiParsing(false);
+                  }
+                }}
+                style={styles.aiSendButton}
+              >
+                {isAiParsing ? 'Wysyłanie do AI...' : 'Wyślij do AI'}
+              </Button>
+            </View>
+
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setShowConfirmDialog(false)}>Anuluj</Button>
+            <Button
+              onPress={() => setShowAddDialog(false)}
+              disabled={isSaving || isAiParsing}
+            >
+              Anuluj
+            </Button>
             <Button
               mode="contained"
-              onPress={handleConfirmSave}
+              onPress={async () => {
+                const sys = parseInt(addSys, 10);
+                const dia = parseInt(addDia, 10);
+                const pulse = parseInt(addPulse, 10);
+
+                if (isNaN(sys) || isNaN(dia) || isNaN(pulse)) {
+                  Alert.alert('Błąd', 'Uzupełnij wszystkie pola poprawnymi liczbami (SYS, DIA, Puls). Może w tym pomóc asystent AI.');
+                  return;
+                }
+
+                if (!user?.id) return;
+
+                setIsSaving(true);
+                try {
+                  const saved = await saveMeasurement(user.id, {
+                    systolic: sys,
+                    diastolic: dia,
+                    pulse: pulse,
+                  });
+
+                  if (saved.isAnomaly) {
+                    Alert.alert(
+                      '⚠️ Wykryto anomalię',
+                      'Twoje wartości ciśnienia znacząco odbiegają od normy. Skonsultuj się z lekarzem.',
+                      [{ text: 'Rozumiem', style: 'default' }]
+                    );
+                  } else {
+                    Alert.alert('✅ Zapisano', 'Pomiar został zapisany pomyślnie.');
+                  }
+
+                  // Odśwież listę pomiarów
+                  const refreshed = await getMeasurements(user.id);
+                  setMeasurements(refreshed);
+                  setShowAddDialog(false);
+                } catch (e: any) {
+                  Alert.alert('Błąd zapisu', 'Nie udało się zapisać pomiaru.');
+                } finally {
+                  setIsSaving(false);
+                }
+              }}
               loading={isSaving}
-              disabled={isSaving}
+              disabled={isSaving || isAiParsing}
               icon="content-save"
             >
               Zapisz pomiar
@@ -430,18 +418,19 @@ const makeStyles = (theme: MD3Theme) =>
       alignSelf: 'flex-start',
       marginBottom: 28,
     },
-    micButton: {
-      width: 160,
-      height: 160,
-      borderRadius: 80,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: 12,
+    addButton: {
+      borderRadius: 28,
+      paddingHorizontal: 8,
+      marginBottom: 32,
+      width: '100%',
     },
-    micLabel: {
-      color: theme.colors.onSurfaceVariant,
-      marginBottom: 28,
-      fontWeight: '600',
+    addButtonContent: {
+      flexDirection: 'row',
+      height: 56,
+    },
+    addButtonLabel: {
+      fontSize: 18,
+      fontWeight: '700',
     },
     lastCard: {
       width: '100%',
@@ -512,8 +501,40 @@ const makeStyles = (theme: MD3Theme) =>
     dialog: {
       borderRadius: 24,
     },
-    confirmInput: {
-      marginBottom: 10,
-      fontSize: 18,
+    dialogTitle: {
+      fontWeight: 'bold',
+      textAlign: 'center',
+    },
+    sectionHeader: {
+      fontWeight: '700',
+      color: theme.colors.onSurface,
+      marginTop: 4,
+    },
+    formRow: {
+      flexDirection: 'row',
+      gap: 12,
+      justifyContent: 'space-between',
+    },
+    formInput: {
+      flex: 1,
+      fontSize: 16,
+    },
+    fullFormInput: {
+      width: '100%',
+      fontSize: 16,
+    },
+    aiInputContainer: {
+      flexDirection: 'column',
+      gap: 10,
+      marginTop: 6,
+    },
+    aiTextInput: {
+      flex: 1,
+      fontSize: 16,
+    },
+    aiSendButton: {
+      borderRadius: 20,
+      alignSelf: 'flex-end',
+      marginTop: 4,
     },
   });

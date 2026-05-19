@@ -12,8 +12,8 @@ class GeminiConfig {
     lateinit var apiKey: String
 
     @Bean
-    fun geminiWebClient(builder: WebClient.Builder): WebClient {
-        return builder
+    fun geminiWebClient(): WebClient {
+        return WebClient.builder()
             .baseUrl("https://generativelanguage.googleapis.com/v1beta/models")
             .defaultHeader("Content-Type", "application/json")
             .build()

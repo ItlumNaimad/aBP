@@ -35,5 +35,13 @@
 - `[x]` Testy React Native Testing Library do weryfikacji drzewa domowego i modułu podsłuchu NLP
 
 ## Faza 7: Zebranie Pracy (Poddanie do Walkthrough)
-- `[ ]` Weryfikacja działania środowiska E2E (Wysłanie wypowiedzi, poprawienie wykresu, zapis do pdf).
-- `[ ]` Wygenerowanie dokumentu podsumowującego Walkthrough.
+- `[x]` Weryfikacja działania środowiska E2E (Wysłanie wypowiedzi, poprawienie wykresu, zapis do pdf).
+- `[x]` Wygenerowanie dokumentu podsumowującego Walkthrough.
+
+## Faza 8: Rozszerzenia Natywne i Produkcyjne (Planowane)
+- `[ ]` Opracowanie szczegółowej instrukcji i środowiska do przejścia na `Expo Development Build` (npx expo prebuild). Konfiguracja zmiennych systemowych (ANDROID_HOME), instalacja NDK i obsługa natywnych zależności kompilatora.
+- `[ ]` Integracja biblioteki `@react-native-voice/voice` po poprawnym przygotowaniu środowiska (obsługa natywnych uprawnień do mikrofonu Android/iOS).
+- `[ ]` Implementacja trybu offline-first na froncie (lokalne kolejkowanie pomiarów w AsyncStorage i synchronizacja z backendem w tle, wspierając lokalne podejście do bazy).
+- `[ ]` Rozbudowa integracji AI (RAG) — przesyłanie historii pacjenta do modelu Gemini w celu generowania krótkich porad pro-zdrowotnych w oparciu o trendy.
+- `[ ]` Opracowanie procedury produkcyjnego deploymentu: konfiguracja Docker Swarm / Compose dla backendu oraz kompilacja produkcyjnego `.apk` przez środowisko EAS Build.
+- `[ ]` Szczegółowa analiza i raportowanie testów: Utworzenie dokumentu analitycznego opisującego metodykę testów (Frontend/Backend), powód wyboru poszczególnych scenariuszy, zestawienie wyników oraz wpływ reaktywności kodu na zaliczanie przypadków brzegowych.

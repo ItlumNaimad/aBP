@@ -25,7 +25,7 @@ Folder odpowiedzialny za file-based routing w standardzie dostarczanym przez **E
 - `/app/_layout.tsx` - Główny provider ułatwiający ładowanie i aplikację wspólnego motywu (`ThemeProvider`) na całą aplikację.
 - `/app/index.tsx` - Główny hub powitalny aplikacji; widok logowania i identyfikacji pacjenta.
 - `/app/(tabs)/_layout.tsx` - Nawigacja dolna ze skalowanymi ikonami dla głównego pulpitu.
-- `/app/(tabs)/dashboard.tsx` - Zestawienie wskaźników z ogromnym polem mikrofonu, kartą podsumowania statystyk, dialogiem edycji i potwierdzenia AI.
+- `/app/(tabs)/dashboard.tsx` - Zestawienie wskaźników z przyciskiem '+ Dodaj wynik', główny zunifikowany dialog formularza dla dodawania wyników ręcznie oraz przez asystenta AI.
 - `/app/(tabs)/history.tsx` - Lista historii pomiarów z interaktywnym wykresem liniowym (`victory-native`) oraz oznaczeniami anomalii.
 - `/app/(tabs)/settings.tsx` - Przełącznik motywu, pobieranie raportu PDF na urządzenie, wylogowanie.
 
@@ -81,6 +81,14 @@ Konfiguracja Babel z pluginem `react-native-reanimated/plugin` (wymagany przez `
 > Wtedy potrzebujecie Development Build:
 > npx expo prebuild
 > npx expo run:android
+
+## Future Developments (Faza 8)
+
+Mimo ukończenia i wdrożenia kluczowych funkcjonalności, architektura projektu pozostawia furtkę na niezbędne z punktu widzenia produkcji komercyjnej udoskonalenia:
+
+1. **Przejście na Expo Development Build**: Aby zintegrować wbudowaną bibliotekę do nasłuchu mowy (`@react-native-voice/voice`), nie wystarczy nam środowisko Expo Go. Konieczne jest wygenerowanie natywnych folderów `android`/`ios` poprzez komendę `npx expo prebuild`. Wymaga to jednak starannego przygotowania: poprawnego zainstalowania pakietów Android SDK, NDK, konfiguracji zmiennych środowiskowych (ANDROID_HOME) oraz ewentualnego rozwiązywania konfliktów Gradle dla paczek React Native. Ten proces zostanie solidnie udokumentowany, by zapewnić gładkie i powtarzalne środowisko kompilacji.
+2. **Funkcjonalność Offline**: Wykorzystanie istniejącego `AsyncStorage` nie tylko do motywów, ale też do implementacji kolejki żądań (Request Queue), w celu uodpornienia się na utratę łączności z siecią. Utrzyma to w 100% lokalny, bezpieczny charakter bazy powiązanej z danym telefonem.
+3. **Zastosowanie zaawansowanego RAG (Gemini)**: Przesyłanie dotychczasowej historii pacjenta do modelu celem wyłuskania spersonalizowanych zaleceń zdrowotnych na każdy dzień.
 
 ## Verification Plan
 
