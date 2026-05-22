@@ -9,28 +9,27 @@ describe('useAppStore', () => {
   });
 
   it('powinien być niezalogowany na starcie', () => {
-    const { isLoggedIn, user } = useAppStore.getState();
-    expect(isLoggedIn).toBe(false);
+    const { user } = useAppStore.getState();
     expect(user).toBeNull();
   });
 
-  it('akcja setLogin pomyślnie loguje użytkownika', () => {
+  it('akcja setUser pomyślnie loguje użytkownika', () => {
     act(() => {
-      useAppStore.getState().setLogin({
+      useAppStore.getState().setUser({
         id: '123e4567-e89b-12d3-a456-426614174000',
         username: 'testuser',
       });
     });
 
     const state = useAppStore.getState();
-    expect(state.isLoggedIn).toBe(true);
+    expect(state.user).not.toBeNull();
     expect(state.user?.username).toBe('testuser');
   });
 
   it('akcja logout wylogowuje użytkownika i czyści dane', () => {
     // Najpierw logujemy
     act(() => {
-      useAppStore.getState().setLogin({
+      useAppStore.getState().setUser({
         id: '123e4567-e89b-12d3-a456-426614174000',
         username: 'testuser',
       });
@@ -42,7 +41,6 @@ describe('useAppStore', () => {
     });
 
     const state = useAppStore.getState();
-    expect(state.isLoggedIn).toBe(false);
     expect(state.user).toBeNull();
   });
 

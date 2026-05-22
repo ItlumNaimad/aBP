@@ -1,11 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import Voice, { SpeechResultsEvent, SpeechErrorEvent } from '@react-native-voice/voice';
 
 /**
  * Abstrakcyjny hook opakowujący logikę wprowadzania głosowego.
  *
- * Obecna implementacja: deleguje do ręcznego wpisania tekstu (dialog).
- * Przyszła implementacja: podpięcie @react-native-voice/voice
- * po konfiguracji Development Build (npx expo prebuild).
+ * Obecna implementacja: natywne rozpoznawanie mowy przy użyciu @react-native-voice/voice.
+ * Wymaga Development Build (EAS Build / npx expo run:android) z racji natywnych bibliotek mikrofonu.
  *
  * Interfejs hooka jest stabilny — zmiana implementacji pod spodem
  * nie wymaga zmian w komponentach.
@@ -16,13 +16,13 @@ interface UseVoiceInputReturn {
   isListening: boolean;
   /** Przechwycony tekst (do wysłania do API) */
   transcript: string;
-  /** Flaga, czy dostępne jest prawdziwe STT (na razie false) */
+  /** Flaga, czy dostępne jest prawdziwe STT (w Development Build: true) */
   isNativeSTTAvailable: boolean;
-  /** Rozpocznij nasłuchiwanie (w przyszłości: uruchom mikrofon) */
+  /** Rozpocznij nasłuchiwanie za pomocą mikrofonu systemowego */
   startListening: () => void;
   /** Zatrzymaj nasłuchiwanie */
   stopListening: () => void;
-  /** Ustaw tekst ręcznie (zastępstwo za mikrofon) */
+  /** Ustaw tekst ręcznie (np. jako fallback) */
   setManualTranscript: (text: string) => void;
   /** Wyczyść transkrypcję */
   clearTranscript: () => void;
@@ -32,24 +32,62 @@ export function useVoiceInput(): UseVoiceInputReturn {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
 
-  // Na razie: brak natywnego STT — Expo Go nie wspiera @react-native-voice/voice
-  const isNativeSTTAvailable = false;
+  // W Development Build natywne rozpoznawanie mowy jest w pełni dostępne
+  const isNativeSTTAvailable = true;
 
-  const startListening = useCallback(() => {
-    if (isNativeSTTAvailable) {
-      // TODO: Podpięcie @react-native-voice/voice w Development Build
-      // Voice.start('pl-PL');
+  useEffect(() => {
+    function onSpeechStart() {
       setIsListening(true);
     }
-    // W trybie fallback: nic nie robimy — komponent otworzy dialog ręczny
-  }, [isNativeSTTAvailable]);
 
-  const stopListening = useCallback(() => {
-    if (isNativeSTTAvailable) {
-      // TODO: Voice.stop();
+    function onSpeechEnd() {
+      setIsListening(false);
     }
-    setIsListening(false);
-  }, [isNativeSTTAvailable]);
+
+    function onSpeechResults(e: SpeechResultsEvent) {
+      if (e.value && e.value.length > 0) {
+        // Pierwsza fraza na liście jest najbardziej dopasowana/prawdopodobna
+        setTranscript(e.value[0]);
+      }
+    }
+
+    function onSpeechError(e: SpeechErrorEvent) {
+      console.error('Speech recognition error: ', e.error);
+      setIsListening(false);
+    }
+
+    // Rejestracja listenerów systemowych
+    Voice.onSpeechStart = onSpeechStart;
+    Voice.onSpeechEnd = onSpeechEnd;
+    Voice.onSpeechResults = onSpeechResults;
+    Voice.onSpeechError = onSpeechError;
+
+    // Czyszczenie zasobów przy odmontowywaniu hooka
+    return () => {
+      Voice.destroy().then(Voice.removeAllListeners);
+    };
+  }, []);
+
+  const startListening = useCallback(async () => {
+    try {
+      setTranscript('');
+      setIsListening(true);
+      // Rozpoczęcie nasłuchu w języku polskim
+      await Voice.start('pl-PL');
+    } catch (e) {
+      console.error('Failed to start voice recognition:', e);
+      setIsListening(false);
+    }
+  }, []);
+
+  const stopListening = useCallback(async () => {
+    try {
+      await Voice.stop();
+      setIsListening(false);
+    } catch (e) {
+      console.error('Failed to stop voice recognition:', e);
+    }
+  }, []);
 
   const setManualTranscript = useCallback((text: string) => {
     setTranscript(text);

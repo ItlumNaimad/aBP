@@ -457,7 +457,7 @@ Jeśli zmienisz strukturę w klasach Kotlin (np. dodasz zmienną `email` w `AppU
 
 ---
 
-## Dziennik prac i postępy (Dzisiaj)
+## Dziennik prac i postępy (19.05.2026)
 
 - **Unifikacja interfejsu (Frontend)**: Zrezygnowano z wielkiego przycisku mikrofonu na głównym ekranie na rzecz przejrzystego przycisku "+ Dodaj wynik". Wdrożono spójne okno dialogowe pozwalające na ręczne dodawanie wyników oraz wywoływanie asystenta AI z poziomu jednego zunifikowanego formularza.
 - **Dodano wizualne statusy asystenta AI**: Mikrofon zastąpiono responsywnym przyciskiem "Wyślij do AI", który podczas wczytywania (`isAiParsing`) blokuje się i wyświetla spinner oraz napis "Wysyłanie do AI...".

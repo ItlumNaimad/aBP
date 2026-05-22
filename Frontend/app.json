@@ -8,7 +8,13 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "@react-native-voice/voice",
+        {
+          "microphonePermission": "Zezwól aplikacji na dostęp do mikrofonu w celu głosowego dyktowania wyników ciśnienia krwi."
+        }
+      ]
     ],
     "android": {
       "package": "com.adb.abp",
