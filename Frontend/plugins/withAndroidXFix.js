@@ -10,33 +10,56 @@
  * android:appComponentFactory=androidx.core.app.CoreComponentFactory.
  *
  * Solution:
- *   1. Add tools:replace="android:appComponentFactory" to <application> in the manifest
- *   2. Force-exclude old com.android.support deps from Gradle resolution
+ *   1. Directly patch AndroidManifest.xml (raw text) to add both
+ *      tools:replace="android:appComponentFactory" AND the replacement value.
+ *      We use withDangerousMod instead of withAndroidManifest because expo's
+ *      xml2js serializer silently drops namespaced attributes like
+ *      android:appComponentFactory.
+ *   2. Force-exclude old com.android.support deps from Gradle resolution.
  */
 const {
-  withAndroidManifest,
+  withDangerousMod,
   withAppBuildGradle,
 } = require("expo/config-plugins");
+const fs = require("fs");
+const path = require("path");
 
 function withAndroidXFix(config) {
-  // --- Step 1: Patch AndroidManifest.xml ---
-  config = withAndroidManifest(config, (modConfig) => {
-    const manifest = modConfig.modResults.manifest;
+  // --- Step 1: Directly patch AndroidManifest.xml as raw text ---
+  config = withDangerousMod(config, [
+    "android",
+    (modConfig) => {
+      const manifestPath = path.join(
+        modConfig.modRequest.platformProjectRoot,
+        "app",
+        "src",
+        "main",
+        "AndroidManifest.xml"
+      );
 
-    // Ensure xmlns:tools namespace is declared
-    manifest.$["xmlns:tools"] = "http://schemas.android.com/tools";
+      let manifest = fs.readFileSync(manifestPath, "utf-8");
 
-    const application = manifest.application?.[0];
-    if (application) {
-      // Tell the manifest merger to prefer our (AndroidX) value
-      application.$["tools:replace"] = "android:appComponentFactory";
-      // Provide the actual AndroidX value to replace with
-      application.$["android:appComponentFactory"] =
-        "androidx.core.app.CoreComponentFactory";
-    }
+      // 1a. Add xmlns:tools namespace to <manifest> if missing
+      if (!manifest.includes("xmlns:tools")) {
+        manifest = manifest.replace(
+          "<manifest ",
+          '<manifest xmlns:tools="http://schemas.android.com/tools" '
+        );
+      }
 
-    return modConfig;
-  });
+      // 1b. Add tools:replace and android:appComponentFactory to <application>
+      //     Only if not already present
+      if (!manifest.includes("tools:replace")) {
+        manifest = manifest.replace(
+          "<application",
+          '<application\n      android:appComponentFactory="androidx.core.app.CoreComponentFactory"\n      tools:replace="android:appComponentFactory"'
+        );
+      }
+
+      fs.writeFileSync(manifestPath, manifest, "utf-8");
+      return modConfig;
+    },
+  ]);
 
   // --- Step 2: Force-exclude old android.support from Gradle ---
   config = withAppBuildGradle(config, (modConfig) => {
