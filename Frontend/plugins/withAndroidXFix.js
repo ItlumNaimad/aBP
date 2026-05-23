@@ -30,6 +30,9 @@ function withAndroidXFix(config) {
     if (application) {
       // Tell the manifest merger to prefer our (AndroidX) value
       application.$["tools:replace"] = "android:appComponentFactory";
+      // Provide the actual AndroidX value to replace with
+      application.$["android:appComponentFactory"] =
+        "androidx.core.app.CoreComponentFactory";
     }
 
     return modConfig;
