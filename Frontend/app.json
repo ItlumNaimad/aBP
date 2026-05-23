@@ -14,12 +14,31 @@
         {
           "microphonePermission": "Zezwól aplikacji na dostęp do mikrofonu w celu głosowego dyktowania wyników ciśnienia krwi."
         }
-      ]
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "useAndroidX": true,
+            "enableJetifier": true
+          }
+        }
+      ],
+      "./plugins/withAndroidXFix"
     ],
     "android": {
       "package": "com.adb.abp",
       "adaptiveIcon": {
         "backgroundColor": "#0097A7"
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c951e58f-989b-4d49-bfdf-5edefc99fdb0"
       }
     }
   }
