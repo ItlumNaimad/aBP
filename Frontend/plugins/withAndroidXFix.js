@@ -61,34 +61,52 @@ function withAndroidXFix(config) {
     },
   ]);
 
-  // --- Step 2: Force-exclude old android.support from Gradle ---
+  // --- Step 2: Force-exclude old android.support from Gradle + fix META-INF dupes ---
   config = withAppBuildGradle(config, (modConfig) => {
-    const contents = modConfig.modResults.contents;
+    let contents = modConfig.modResults.contents;
 
     // Guard: don't inject twice
     if (contents.includes("// [withAndroidXFix]")) {
       return modConfig;
     }
 
+    // 2a. Exclude the ENTIRE com.android.support group (not individual modules)
     const excludeBlock = `
-// [withAndroidXFix] Force-exclude legacy android.support libraries
+// [withAndroidXFix] Force-exclude ALL legacy android.support libraries
 configurations.all {
-    exclude group: 'com.android.support', module: 'support-compat'
-    exclude group: 'com.android.support', module: 'support-v4'
-    exclude group: 'com.android.support', module: 'support-core-utils'
-    exclude group: 'com.android.support', module: 'support-annotations'
-    exclude group: 'com.android.support', module: 'animated-vector-drawable'
-    exclude group: 'com.android.support', module: 'support-vector-drawable'
-    exclude group: 'com.android.support', module: 'versionedparcelable'
+    exclude group: 'com.android.support'
 }
 `;
 
     // Insert before the first `dependencies {` block
-    modConfig.modResults.contents = contents.replace(
+    contents = contents.replace(
       /dependencies\s*\{/,
       `${excludeBlock}\ndependencies {`
     );
 
+    // 2b. Add packaging block inside android { } to handle any remaining
+    //     duplicate META-INF files from android.support vs AndroidX JARs
+    const packagingBlock = `
+    // [withAndroidXFix] Resolve duplicate META-INF files
+    packaging {
+        resources {
+            pickFirsts += ['META-INF/*.version']
+            pickFirsts += ['META-INF/*.properties']
+            excludes += ['META-INF/DEPENDENCIES']
+            excludes += ['META-INF/LICENSE']
+            excludes += ['META-INF/LICENSE.txt']
+            excludes += ['META-INF/NOTICE']
+            excludes += ['META-INF/NOTICE.txt']
+        }
+    }`;
+
+    // Insert inside the android { } block (after the first line of android {)
+    contents = contents.replace(
+      /android\s*\{/,
+      `android {\n${packagingBlock}`
+    );
+
+    modConfig.modResults.contents = contents;
     return modConfig;
   });
 
