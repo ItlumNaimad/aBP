@@ -45,3 +45,12 @@
 - `[ ]` Rozbudowa integracji AI (RAG) — przesyłanie historii pacjenta do modelu Gemini w celu generowania krótkich porad pro-zdrowotnych w oparciu o trendy.
 - `[ ]` Opracowanie procedury produkcyjnego deploymentu: konfiguracja Docker Swarm / Compose dla backendu oraz kompilacja produkcyjnego `.apk` przez środowisko EAS Build.
 - `[ ]` Szczegółowa analiza i raportowanie testów: Utworzenie dokumentu analitycznego opisującego metodykę testów (Frontend/Backend), powód wyboru poszczególnych scenariuszy, zestawienie wyników oraz wpływ reaktywności kodu na zaliczanie przypadków brzegowych.
+
+## Faza 9: Bieżące Poprawki i Optymalizacje (UI/UX)
+- `[x]` Rozwiązanie problemu nachodzenia przycisków systemowych Androida na dolne menu nawigacyjne (dopasowanie SafeArea / paddingów)
+- `[x]` Dodanie przycisku z mikrofonem w formularzu asystenta AI ("Dodaj wynik"), uruchamiającego rozpoznawanie mowy (Speech-to-Text)
+- `[x]` Rozwiązanie problemu zasłaniania formularza dodawania nowego pomiaru przez klawiaturę systemową (wdrożenie KeyboardAvoidingView)
+- `[x]` Wyeliminowanie ostrzeżenia Reanimated: `Reading from value during component render` (przeniesienie odczytu wartości współdzielonej poza cykl renderowania Reacta)
+- `[x]` Wprowadzenie jasnego logowania i ostrzeżeń na backendzie w przypadku braku klucza `GEMINI_API_KEY` (zabezpieczenie przed cichym przechodzeniem w tryb mock bez logów/komunikatów)
+
+

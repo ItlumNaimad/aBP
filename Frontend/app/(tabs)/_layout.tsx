@@ -3,6 +3,7 @@ import { Tabs } from 'expo-router';
 import { useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAppStore } from '../../store/useAppStore';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { MD3Theme } from 'react-native-paper';
 
 /**
@@ -15,6 +16,7 @@ import type { MD3Theme } from 'react-native-paper';
  */
 export default function TabsLayout() {
   const theme = useTheme<MD3Theme>();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
@@ -32,8 +34,8 @@ export default function TabsLayout() {
           backgroundColor: theme.colors.elevation.level2,
           borderTopColor: theme.colors.outline,
           borderTopWidth: 0.5,
-          height: 72,
-          paddingBottom: 10,
+          height: 72 + insets.bottom,
+          paddingBottom: 10 + insets.bottom,
           paddingTop: 6,
         },
         tabBarActiveTintColor: theme.colors.primary,

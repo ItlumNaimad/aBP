@@ -1,10 +1,13 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
   Alert,
   Pressable,
+  KeyboardAvoidingView,
+  Platform,
+  Animated as RNAnimated,
 } from 'react-native';
 import {
   Text,
@@ -53,6 +56,34 @@ export default function DashboardScreen() {
   // Stan asystenta AI
   const [aiText, setAiText] = useState('');
   const [isAiParsing, setIsAiParsing] = useState(false);
+
+  // Hook rozpoznawania mowy (STT)
+  const { isListening, transcript, startListening, stopListening } = useVoiceInput();
+
+  // Pulsująca animacja przycisku mikrofonu
+  const micPulseAnim = useRef(new RNAnimated.Value(1)).current;
+
+  useEffect(() => {
+    if (isListening) {
+      const pulse = RNAnimated.loop(
+        RNAnimated.sequence([
+          RNAnimated.timing(micPulseAnim, { toValue: 1.25, duration: 500, useNativeDriver: true }),
+          RNAnimated.timing(micPulseAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+        ])
+      );
+      pulse.start();
+      return () => pulse.stop();
+    } else {
+      micPulseAnim.setValue(1);
+    }
+  }, [isListening]);
+
+  // Synchronizacja transkrypcji STT z polem tekstowym AI
+  useEffect(() => {
+    if (transcript) {
+      setAiText(transcript);
+    }
+  }, [transcript]);
 
   const lastMeasurement = measurements.length > 0 ? measurements[0] : null;
 
@@ -246,6 +277,15 @@ export default function DashboardScreen() {
           style={styles.dialog}
         >
           <Dialog.Title style={styles.dialogTitle}>Nowy pomiar</Dialog.Title>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+          >
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            style={{ maxHeight: 420 }}
+          >
           <Dialog.Content style={{ gap: 12 }}>
             
             {/* Formularz Ręczny */}
@@ -289,19 +329,52 @@ export default function DashboardScreen() {
               🎤 Użyj asystenta AI (mowa / tekst):
             </Text>
             <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-              Wpisz np. „moje ciśnienie to 125 na 82, puls 68”, a AI samo uzupełni pola wyżej!
+              Wpisz np. „moje ciśnienie to 125 na 82, puls 68", a AI samo uzupełni pola wyżej!
             </Text>
             
             <View style={styles.aiInputContainer}>
-              <TextInput
-                placeholder="Wpisz lub powiedz pomiar..."
-                value={aiText}
-                onChangeText={setAiText}
-                mode="outlined"
-                multiline
-                numberOfLines={2}
-                style={styles.aiTextInput}
-              />
+              <View style={styles.aiInputRow}>
+                <TextInput
+                  placeholder="Wpisz lub powiedz pomiar..."
+                  value={aiText}
+                  onChangeText={setAiText}
+                  mode="outlined"
+                  multiline
+                  numberOfLines={2}
+                  style={[styles.aiTextInput, { flex: 1 }]}
+                />
+                {/* Przycisk mikrofonu STT */}
+                <RNAnimated.View style={{ transform: [{ scale: micPulseAnim }] }}>
+                  <IconButton
+                    icon={isListening ? 'microphone' : 'microphone-outline'}
+                    mode={isListening ? 'contained' : 'contained-tonal'}
+                    size={28}
+                    iconColor={isListening ? theme.colors.onPrimary : theme.colors.primary}
+                    containerColor={isListening ? theme.colors.primary : theme.colors.primaryContainer}
+                    onPress={() => {
+                      try {
+                        if (isListening) {
+                          stopListening();
+                        } else {
+                          startListening();
+                        }
+                      } catch {
+                        Alert.alert(
+                          'Mikrofon niedostępny',
+                          'Rozpoznawanie mowy wymaga Development Build (npx expo run:android). W Expo Go wpisz tekst ręcznie.'
+                        );
+                      }
+                    }}
+                    accessibilityLabel={isListening ? 'Zatrzymaj nagrywanie' : 'Rozpocznij nagrywanie głosu'}
+                    style={styles.micButton}
+                  />
+                </RNAnimated.View>
+              </View>
+              {isListening && (
+                <Text variant="bodySmall" style={{ color: theme.colors.primary, fontStyle: 'italic' }}>
+                  🎙️ Słucham… mów teraz
+                </Text>
+              )}
               <Button
                 mode="contained-tonal"
                 icon="send"
@@ -335,6 +408,8 @@ export default function DashboardScreen() {
             </View>
 
           </Dialog.Content>
+          </ScrollView>
+          </KeyboardAvoidingView>
           <Dialog.Actions>
             <Button
               onPress={() => setShowAddDialog(false)}
@@ -528,9 +603,17 @@ const makeStyles = (theme: MD3Theme) =>
       gap: 10,
       marginTop: 6,
     },
+    aiInputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
     aiTextInput: {
       flex: 1,
       fontSize: 16,
+    },
+    micButton: {
+      marginTop: 4,
     },
     aiSendButton: {
       borderRadius: 20,

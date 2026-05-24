@@ -57,6 +57,32 @@ Hooki abstrakcyjne:
 
 Konfiguracja Babel z pluginem `react-native-reanimated/plugin` (wymagany przez `victory-native`).
 
+### Planowane Poprawki i Optymalizacje UI/UX (Bieżące)
+
+W odpowiedzi na testy manualne na fizycznym urządzeniu Android zdiagnozowano i zaplanowano wdrożenie następujących poprawek:
+
+1. **Konflikt przycisków systemowych z menu nawigacyjnym Androida**
+   - **Problem**: Dolny pasek nawigacyjny Androida (przyciski wstecz, home, aplikacje) nachodzi na dolne menu aplikacji (tabs navigation).
+   - **Rozwiązanie**: Zastosowanie `useSafeAreaInsets` z `react-native-safe-area-context` lub poprawne owinięcie kontenerów nawigacyjnych w `SafeAreaView`, aby dynamicznie uwzględnić wysokość systemowego paska nawigacji na Androidzie.
+
+2. **Integracja przycisku mikrofonu (Speech-to-Text) w asystencie AI**
+   - **Problem**: Brak intuicyjnego interfejsu do wyzwalania STT w sekcji asystenta AI w formularzu "Dodaj wynik".
+   - **Rozwiązanie**: Wzbogacenie modalnego formularza asystenta AI o przycisk z ikoną mikrofonu (obok pola tekstowego lub wewnątrz niego). Kliknięcie przycisku uruchomi natywny nasłuch mowy (przez hook `useVoiceInput`), a rozpoznany tekst automatycznie wypełni formularz.
+
+3. **Zasłanianie formularza dodawania pomiaru przez klawiaturę systemową**
+   - **Problem**: Po kliknięciu w pole tekstowe formularza i otwarciu klawiatury ekranowej, modal/okienko z formularzem nie podnosi się automatycznie, przez co użytkownik nie widzi wpisywanego tekstu.
+   - **Rozwiązanie**: Owinięcie formularza w `KeyboardAvoidingView` z odpowiednio skonfigurowanym parametrem `behavior` (np. `padding` na Androidzie / `height` na iOS) oraz dodanie `ScrollView` wewnątrz modalu, aby umożliwić przewijanie formularza po otwarciu klawiatury.
+
+4. **Ostrzeżenie o wydajności Reanimated (Reading from `value` during component render)**
+   - **Problem**: W logach pojawia się ostrzeżenie: `WARN [Reanimated] Reading from value during component render. Please ensure that you don't access the value property nor use get method of a shared value while React is rendering a component.`
+   - **Rozwiązanie**: Przegląd komponentów korzystających z Reanimated (np. wykresów w `BloodPressureChart` lub innych animowanych elementów) i upewnienie się, że właściwość `.value` wartości współdzielonej (Shared Value) jest odczytywana wyłącznie wewnątrz hooków stylu animowanego (`useAnimatedStyle`, `useDerivedValue`) lub w handlerach zdarzeń, a nie bezpośrednio w ciele funkcji komponentu podczas renderowania.
+
+5. **Niejasne działanie API Gemini w przypadku braku klucza w środowisku (cichy fallback do 'mock')**
+   - **Problem**: Kiedy aplikacja jest uruchamiana bez zdefiniowanej zmiennej środowiskowej `GEMINI_API_KEY`, backend automatycznie i bez żadnego ostrzeżenia (cicho) przechodzi w tryb mockowy, zwracając stałe dane `120/80/70`. Sprawia to wrażenie błędu działania sztucznej inteligencji. Ponadto Gradle cachuje zmienne środowiskowe w procesach Daemona, co może powodować, że zmiana zmiennej w konsoli nie odświeża się bez zatrzymania daemona.
+   - **Rozwiązanie**: 
+     - Wprowadzenie wyraźnego logu o poziomie `WARN` na etapie inicjalizacji aplikacji (w sekcji startowej lub przy pierwszym użyciu `GeminiService`), informującego o braku klucza `GEMINI_API_KEY` i uruchomieniu serwisu w trybie symulacji (MOCK).
+     - Dodanie w README/dokumentacji przypomnienia o konieczności restartu daemona Gradle (`./gradlew --stop`) w przypadku problemów z odświeżeniem zmiennych środowiskowych.
+
 ### Architektura Backendowa (Zrealizowane Wcześniej)
 
 - Backend zdefiniowany przy użyciu Kotlin, Spring WebFlux, w środowisku non-blocking na coroutinach i warstwie dostępu R2DBC do kontenerów Dockera PostgreSQL (zakończone).

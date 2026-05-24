@@ -165,13 +165,47 @@ function NativeChart({ measurements, theme }: { measurements: Measurement[]; the
         </CartesianChart>
       </View>
       {isActive && (
-        <View style={[styles.tooltip, { backgroundColor: theme.colors.elevation.level3 }]}>
-          <Text variant="bodySmall" style={{ color: theme.colors.primary, fontWeight: '700' }}>SYS: {Math.round(state.y.systolic.value.value)}</Text>
-          <Text variant="bodySmall" style={{ color: theme.colors.secondary, fontWeight: '700' }}>DIA: {Math.round(state.y.diastolic.value.value)}</Text>
-          <Text variant="bodySmall" style={{ color: medicalColors.danger, fontWeight: '700' }}>Puls: {Math.round(state.y.pulse.value.value)}</Text>
-        </View>
+        <ChartTooltip state={state} theme={theme} />
       )}
     </Surface>
+  );
+}
+
+/**
+ * Tooltip wyodrębniony do osobnego komponentu, aby uniknąć
+ * ostrzeżenia Reanimated: "Reading from value during component render".
+ *
+ * Wartości SharedValue z victory-native są odczytywane bezpiecznie
+ * w useEffect (poza cyklem render) i mostowane do stanu React.
+ */
+function ChartTooltip({ state, theme }: { state: any; theme: MD3Theme }) {
+  const [values, setValues] = React.useState({ sys: 0, dia: 0, pulse: 0 });
+
+  React.useEffect(() => {
+    // Odczytujemy SharedValue w efekcie (poza renderem)
+    // Victory-native state.y.*.value jest obiektem z .value (SharedValue)
+    const sysVal = state.y.systolic.value;
+    const diaVal = state.y.diastolic.value;
+    const pulseVal = state.y.pulse.value;
+
+    // SharedValue ma .value, ale może też być zwykłą liczbą w zależności od wersji
+    const sys = typeof sysVal === 'object' && sysVal !== null ? sysVal.value : sysVal;
+    const dia = typeof diaVal === 'object' && diaVal !== null ? diaVal.value : diaVal;
+    const pulse = typeof pulseVal === 'object' && pulseVal !== null ? pulseVal.value : pulseVal;
+
+    setValues({
+      sys: Math.round(sys ?? 0),
+      dia: Math.round(dia ?? 0),
+      pulse: Math.round(pulse ?? 0),
+    });
+  });
+
+  return (
+    <View style={[styles.tooltip, { backgroundColor: theme.colors.elevation.level3 }]}>
+      <Text variant="bodySmall" style={{ color: theme.colors.primary, fontWeight: '700' }}>SYS: {values.sys}</Text>
+      <Text variant="bodySmall" style={{ color: theme.colors.secondary, fontWeight: '700' }}>DIA: {values.dia}</Text>
+      <Text variant="bodySmall" style={{ color: medicalColors.danger, fontWeight: '700' }}>Puls: {values.pulse}</Text>
+    </View>
   );
 }
 
@@ -185,3 +219,4 @@ const styles = StyleSheet.create({
   emptyState: { height: 120, justifyContent: 'center', alignItems: 'center' },
   tooltip: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, marginTop: 8 },
 });
+

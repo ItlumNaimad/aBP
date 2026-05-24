@@ -11,7 +11,7 @@ import type { AppUser, Measurement, ParsedMeasurement } from '../store/useAppSto
  */
 const getBaseUrl = (): string => {
   if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:8080';
+    return 'https://cold-bats-marry.loca.lt';
   }
   // Web lub iOS — domyślnie localhost
   return 'http://localhost:8080';
@@ -22,6 +22,7 @@ const api = axios.create({
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
+    'Bypass-Tunnel-Reminder': 'true',
   },
 });
 

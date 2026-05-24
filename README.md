@@ -158,7 +158,63 @@ cd Frontend && npx expo prebuild
 cd Frontend && npx expo run:android
 ```
 
+### 🌐 Konfiguracja Tunelowania dla WSL i Fizycznego Telefonu (localtunnel + Expo Tunnel)
+
+Podczas pracy w środowisku **WSL (Windows Subsystem for Linux)**, sieć wirtualna WSL jest odizolowana od sieci fizycznej (LAN), w której znajduje się Twój telefon. Aby fizyczne urządzenie mobilne (z zainstalowaną aplikacją Expo Go lub Development Buildem) mogło połączyć się z Twoim lokalnym backendem oraz pobrać paczkę JavaScript, należy zastosować podwójne tunelowanie:
+
 ---
+
+#### KROK 1: Tunelowanie Backendu (Udostępnienie API w internecie)
+Backend Spring Boot domyślnie nasłuchuje na porcie `8080`. Musimy wystawić go na publiczny, bezpieczny adres HTTPS:
+
+1. **Uruchom Backend:**
+   ```bash
+   cd Backend && ./gradlew bootRun
+   ```
+2. **Uruchom localtunnel:**
+   W osobnym oknie terminala wywołaj:
+   ```bash
+   cd Frontend && npx localtunnel --port 8080
+   ```
+   *Konsola wyświetli publiczny adres URL, np.: `https://gentle-snakes-jump.localtunnel.me`*
+3. **Konfiguracja w kodzie Frontend:**
+   Skopiuj wygenerowany adres HTTPS i wklej go jako `BASE_URL` w pliku [Frontend/api/client.ts](file:///home/naimad/projekty/aBP/Frontend/api/client.ts).
+   *Uwaga: W pliku `client.ts` zaimplementowano automatyczne wstrzykiwanie nagłówka `'bypass-tunnel-reminder': 'true'`. Jest to kluczowe, aby localtunnel nie serwował ekranu ostrzegawczego przy pierwszym połączeniu (co blokowałoby zapytania mobilne).*
+
+---
+
+#### KROK 2: Tunelowanie Frontendu (Pobieranie paczki JS przez telefon)
+Aby telefon pobrał aplikację z komputera przez Internet:
+
+* **Wariant A: Uruchamianie w Expo Go**
+  Jeśli testujesz w standardowym Expo Go, wystartuj serwer Metro z flagą `--tunnel`:
+  ```bash
+  cd Frontend && npx expo start --tunnel
+  ```
+  Zeskanuj wygenerowany kod QR za pomocą aplikacji **Expo Go** na swoim smartfonie.
+
+* **Wariant B: Uruchamianie w natywnym Development Buildzie (Zalecane / Wymagane dla STT)**
+  Ponieważ natywne moduły (np. `@react-native-voice/voice` do obsługi mikrofonu) wymagają kodu natywnego, standardowa aplikacja Expo Go ich nie obsłuży. Należy zbudować tzw. **Development Client**:
+
+  1. **Podłącz fizyczny telefon** do komputera przez kabel USB i upewnij się, że masz włączone *Debugowanie USB* w opcjach programisty Androida.
+  2. **Zbuduj i zainstaluj aplikację na telefonie:**
+     ```bash
+     cd Frontend
+     npx expo prebuild
+     npx expo run:android --variant debug
+     ```
+     *Komenda skompiluje kod Kotlin/Java i zainstaluje na Twoim urządzeniu dedykowaną aplikację o nazwie **aBP** (będzie miała ikonę deweloperską).*
+  3. **Wystartuj serwer deweloperski z tunelem i flagą klienta:**
+     ```bash
+     npx expo start --dev-client --tunnel
+     ```
+  4. **Uruchom zainstalowaną aplikację deweloperską na telefonie** i:
+     - Zeskanuj kod QR aparatem z poziomu terminala, LUB
+     - Wpisz ręcznie wygenerowany adres tunelu Expo Metro w polu tekstowym aplikacji deweloperskiej.
+  5. Metro Bundler prześle paczkę JavaScript przez zabezpieczony tunel wprost do Twojego zainstalowanego pliku APK na telefonie, umożliwiając pełne debugowanie i hot-reloading!
+
+---
+
 
 ## Testowanie Aplikacji — Szczegółowa Dokumentacja
 
@@ -465,3 +521,109 @@ Jeśli zmienisz strukturę w klasach Kotlin (np. dodasz zmienną `email` w `AppU
 - **Rozwiązanie problemu CORS przy zmianie portu Expo**: Dodano do `CorsConfig.kt` zaufane źródło dla portu `8082` (oraz `127.0.0.1:8082`), co uchroniło komunikację przed odrzuceniem w przypadku, gdy środowisko Node/Expo zajęło kolejny port z powodu zawieszonych procesów.
 - **Rozwiązanie problemów ze środowiskiem (Zmienne systemowe Gradle)**: Zweryfikowano działanie zmiennych środowiskowych u daemona Gradle – od teraz rekomendowanym i bezpiecznym sposobem uruchamiania aplikacji ze swoim prywatnym kluczem API jest przekazanie go bezpośrednio jako argument: `--args='--gemini.api-key="KLUCZ"'`, co gwarantuje prawidłowe połączenie z backendem Google.
 - **Zakończenie i certyfikacja**: Odznaczono jako wykonane wszystkie zadania w `tasks.md` w fazie 7. Środowisko E2E pomyślnie przeszło weryfikację.
+
+---
+
+## Dziennik prac i postępy (23.05.2026 - Rozwiązanie problemów z budowaniem Android i unifikacja bibliotek)
+
+W ramach prac nad przygotowaniem produkcyjnej/deweloperskiej wersji instalacyjnej aplikacji mobilnej na system Android (Development Build za pomocą usługi **EAS Build** oraz lokalnej kompilacji), zdiagnozowano i pomyślnie rozwiązano szereg krytycznych konfliktów w konfiguracji systemu Gradle oraz manifestu Androida. Poniższy raport szczegółowo dokumentuje podjęte kroki oraz zastosowaną inżynierię oprogramowania.
+
+### 1. Diagnoza problemów z Manifest Merger (AndroidX vs. Deprecated support-compat)
+Podczas generowania buildu deweloperskiego przy użyciu komendy `npx eas-cli build --profile development --platform android` napotkano krytyczny błąd w fazie scalania manifestów (`:app:processDebugMainManifest`):
+```
+Attribute application@appComponentFactory value=(androidx.core.app.CoreComponentFactory)... is also present at [com.android.support:support-compat:28.0.0]...
+```
+**Analiza techniczna konfliktu:**
+Nowoczesne środowisko **Expo SDK 54** oraz sam React Native bazują w pełni na standardzie **AndroidX** (nowoczesnym zestawie bibliotek wsparcia od Google). Jednakże wykorzystywana biblioteka do natywnego rozpoznawania mowy **`@react-native-voice/voice@3.2.4`** (najnowsza dostępna wersja tej biblioteki, nieposiadająca nowszych wydań) wciąż odwołuje się wewnętrznie do przestarzałego pakietu `com.android.support:appcompat-v7:28.0.0`.
+Podczas scalania manifestów (`Manifest Merger`), kompilator Gradle próbuje złączyć deklaracje tagu `<application>` z różnych modułów. Zarówno nowoczesny silnik AndroidX, jak i stara biblioteka `support-compat` próbują zadeklarować własną fabrykę komponentów (`android:appComponentFactory`), co wywołuje konflikt nazw uniemożliwiający pomyślne ukończenie kompilacji.
+
+### 2. Przebieg prac i analiza wypróbowanych podejść (Debugging)
+Próba rozwiązania konfliktu metodami standardowymi wykazała ich niewystarczalność:
+*   **Podejście A (Jetifier):** Skonfigurowano bibliotekę `expo-build-properties` w pliku `app.json` z parametrami `useAndroidX: true` oraz `enableJetifier: true`. Narzędzie Jetifier z powodzeniem przepisuje bytecode plików `.class` i `.jar` w locie, jednak **nie ingeruje w pliki `AndroidManifest.xml` zaszyte wewnątrz paczek npm**. Z tego powodu konflikt manifestów pozostał nienaprawiony.
+*   **Podejście B (Expo Config Plugin `withAndroidManifest`):** Podjęto próbę manipulacji manifestem z poziomu oficjalnego mechanizmu Expo XML (`withAndroidManifest`), wprowadzając atrybut `tools:replace="android:appComponentFactory"`. Okazało się jednak, że wewnętrzny serializer XML używany przez Expo (`xml2js`) cicho wycina z manifestu atrybuty posiadające przestrzenie nazw (takie jak `android:appComponentFactory`), pozostawiając samo żądanie zamiany (`tools:replace`), co skutkowało błędem kompilacji: *„tools:replace specified but no new value specified”*.
+
+### 3. Zastosowane stabilne rozwiązanie (Custom Expo Config Plugin)
+Aby trwale i w pełni zgodnie z filozofią *Continuous Native Generation* (CNG - brak konieczności trzymania katalogu `android/` w repozytorium) naprawić problem kompilacji, zaimplementowano zaawansowany plugin konfiguracyjny Expo:
+
+1.  **Stworzenie dedykowanego pluginu `withAndroidXFix.js`**
+    W katalogu `Frontend/plugins/` utworzono niestandardowy plugin konfiguracyjny [withAndroidXFix.js](file:///home/naimad/projekty/aBP/Frontend/plugins/withAndroidXFix.js). Wykorzystuje on niskopoziomowy hook **`withDangerousMod`** do bezpośredniego operowania na surowym pliku `AndroidManifest.xml` tuż przed kompilacją Gradle (z pominięciem błędnego serializatora `xml2js`). Za pomocą wyrażeń regularnych:
+    *   Wstrzykiwany jest namespace narzędzi (`xmlns:tools="http://schemas.android.com/tools"`) do głównego tagu `<manifest>`.
+    *   Do sekcji `<application>` wstrzykiwane są atrybuty wymuszające poprawne mapowanie na bibliotekę AndroidX: `android:appComponentFactory="androidx.core.app.CoreComponentFactory"` oraz `tools:replace="android:appComponentFactory"`.
+    
+2.  **Globalne wykluczenie przestarzałych zależności (`configurations.all`)**
+    Aby uchronić się przed kolejnymi konfliktami wersji z przestarzałych bibliotek tranzytywnych, plugin `withAndroidXFix.js` używa hooka **`withAppBuildGradle`** do wstrzyknięcia do pliku `app/build.gradle` globalnej reguły wykluczającej całą grupę wsparcia `com.android.support`:
+    ```groovy
+    configurations.all {
+        exclude group: 'com.android.support'
+    }
+    ```
+
+3.  **Rozwiązanie problemów z dublowaniem zasobów metadanych (Duplicate Resources in META-INF)**
+    Po odcięciu zależności `android.support` kompilator napotkał problem ze zduplikowanymi plikami sygnatur i wersji bibliotek (np. `mergeDebugJavaResource FAILED - 2 files found META-INF/androidx.customview_customview.version`). W ramach wtyczki Gradle dopisano reguły pakowania (`packaging {}`) w konfiguracji Androida:
+    ```groovy
+    packaging {
+        resources {
+            pickFirsts += ['META-INF/*.version']
+            pickFirsts += ['META-INF/*.properties']
+            excludes += ['META-INF/DEPENDENCIES']
+            excludes += ['META-INF/LICENSE']
+            excludes += ['META-INF/LICENSE.txt']
+            excludes += ['META-INF/NOTICE']
+            excludes += ['META-INF/NOTICE.txt']
+        }
+    }
+    ```
+    Reguła `pickFirsts` instruuje Gradle, aby przy pakowaniu pliku APK w przypadku napotkania identycznych plików metadanych w różnych modułach po prostu wybrał pierwszy z nich i nie przerywał procesu budowania.
+
+4.  **Aktualizacja zależności pod kątem zgodności z Expo SDK 54**
+    Równolegle przeprowadzono audyt zainstalowanych paczek NPM deweloperskich i testowych pod kątem ich zgodności z Expo SDK 54. Z użyciem komendy `npx expo install --fix` ujednolicono wersje:
+    *   `jest` podniesiono do wersji `~29.7.0`, a `jest-expo` do `~54.0.17` (dzięki czemu testy jednostkowe działają stabilnie w nowym środowisku).
+    *   `react-native-worklets` zmigrowano do kompatybilnej wersji `0.5.1`.
+    *   Biblioteki `zustand` (`^5.0.13`), `victory-native` (`^41.20.3`) oraz `react-native-paper` (`^5.15.2`) zostały zaktualizowane do wersji eliminujących drobne ostrzeżenia kompatybilności.
+
+### 4. Podsumowanie i rezultaty wdrożenia
+*   **Pełna zgodność z metodologią CNG:** Wszystkie zmiany natywne dla systemu Android są wprowadzane automatycznie w fazie prebuild za pomocą dedykowanych pluginów zarejestrowanych w `app.json`. Środowisko deweloperskie pozostaje czyste i nie wymaga ręcznego patchowania kodu w katalogu `/android`.
+*   **Sukces kompilacji:** Zaimplementowane Config Pluginy trwale rozwiązały problem Manifest Merger oraz Resource Duplication, umożliwiając bezproblemową kompilację deweloperskich oraz produkcyjnych plików APK przy użyciu usługi EAS Build. Aplikacja jest przygotowana do bezpośredniego testowania natywnej funkcjonalności rozpoznawania mowy (STT) na urządzeniach z systemem Android.
+
+---
+
+## Dziennik prac i postępy (24.05.2026 - Faza 9: Poprawki UI/UX i Backend Logging)
+
+Ukończono w całości Fazę 9 — wszystkie 5 zadań poprawkowych UI/UX + logowanie backendu.
+
+### 1. KeyboardAvoidingView w dialogu dodawania pomiaru
+**Plik:** `Frontend/app/(tabs)/dashboard.tsx`
+Dialog „Nowy pomiar" owinięto w `KeyboardAvoidingView` (z `behavior="padding"` na iOS) oraz `ScrollView` z `keyboardShouldPersistTaps="handled"`. Formularz jest teraz przewijalny gdy klawiatura systemowa jest widoczna — pola nie są zasłaniane.
+
+### 2. Przycisk mikrofonu (STT) w formularzu asystenta AI
+**Plik:** `Frontend/app/(tabs)/dashboard.tsx`
+Dodano przycisk `IconButton` z ikoną mikrofonu obok pola tekstowego AI. Przycisk:
+- Korzysta z hooka `useVoiceInput` (natywne STT via `@react-native-voice/voice`)
+- Wyświetla pulsującą animację (`Animated.loop`) podczas nasłuchiwania
+- Automatycznie synchronizuje rozpoznany tekst (`transcript`) z polem AI za pomocą `useEffect`
+- Wyświetla komunikat „🎙️ Słucham… mów teraz" podczas aktywnego nasłuchu
+- Obsługuje graceful fallback z komunikatem o wymaganiu Development Build
+
+### 3. SafeArea / padding dla dolnego menu nawigacyjnego (Android)
+**Plik:** `Frontend/app/(tabs)/_layout.tsx`
+Dodano `useSafeAreaInsets()` z `react-native-safe-area-context`. Dynamicznie dodawany jest `insets.bottom` do `height` i `paddingBottom` paska zakładek. Rozwiązuje problem nachodzenia przycisków systemowych Androida (nawigacja gestowa/klawisze) na dolne menu nawigacyjne.
+
+### 4. Eliminacja ostrzeżenia Reanimated
+**Plik:** `Frontend/components/BloodPressureChart.tsx`
+Wyodrębniono tooltip wykresu do osobnego komponentu `ChartTooltip`. Odczyt wartości `SharedValue` z victory-native przeniesiono z cyklu renderowania do `useEffect`, mostując je bezpiecznie do stanu React. Eliminuje to ostrzeżenie `"Reading from value during component render"`.
+
+### 5. Jasne logowanie braku GEMINI_API_KEY na backendzie
+**Pliki:** `Backend/.../config/GeminiConfig.kt`, `Backend/.../service/GeminiService.kt`
+- W `GeminiConfig` dodano `@PostConstruct` z SLF4J loggingiem:
+  - `WARN` gdy klucz = "mock" lub pusty → „GEMINI_API_KEY is NOT set. Running in MOCK mode…"
+  - `INFO` gdy klucz ustawiony → „Gemini API configured successfully (key: ****XXXX)"
+- W `GeminiService` każde wywołanie mock loguje `WARN` z informacją o użytym wejściu
+
+### 6. Naprawa testów LoginScreen
+**Plik:** `Frontend/__tests__/app/LoginScreen.test.tsx`
+Zaktualizowano asercje testowe do aktualnych tekstów UI (`'Monitor Ciśnienia'` zamiast `'Witaj w aBP'`, `'Wpisz swoją nazwę użytkownika'` zamiast `'Nazwa użytkownika nie może być pusta'`).
+
+*   **Pomyślne weryfikacje / Komendy wykonawcze:**
+    *   **Frontend:** `cd Frontend && npx jest` → **Tests: 9 passed, 9 total** (3 suites)
+    *   **Backend:** `cd Backend && ./gradlew test` → **BUILD SUCCESSFUL**
+

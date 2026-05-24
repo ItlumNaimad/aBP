@@ -20,14 +20,13 @@ jest.mock('../../api/client', () => ({
 
 describe('LoginScreen', () => {
   it('renderuje poprawnie ekran logowania', () => {
-    const { getByText, getByPlaceholderText } = render(
+    const { getByText } = render(
       <PaperProvider theme={LightTheme}>
         <LoginScreen />
       </PaperProvider>
     );
 
-    expect(getByText('Witaj w aBP')).toBeTruthy();
-    expect(getByPlaceholderText('Wpisz swoje imię / identyfikator')).toBeTruthy();
+    expect(getByText('Monitor Ciśnienia')).toBeTruthy();
     expect(getByText('Zaloguj się')).toBeTruthy();
   });
 
@@ -41,6 +40,7 @@ describe('LoginScreen', () => {
     const loginButton = getByText('Zaloguj się');
     fireEvent.press(loginButton);
 
-    expect(getByText('Nazwa użytkownika nie może być pusta')).toBeTruthy();
+    expect(getByText('Wpisz swoją nazwę użytkownika')).toBeTruthy();
   });
 });
+

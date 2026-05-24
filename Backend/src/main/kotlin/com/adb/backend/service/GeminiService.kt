@@ -6,6 +6,7 @@ import com.adb.backend.domain.dto.GeminiResponse
 import com.adb.backend.domain.dto.MeasurementParsedDto
 import tools.jackson.databind.ObjectMapper
 import kotlinx.coroutines.reactor.awaitSingle
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.bodyToMono
@@ -17,12 +18,16 @@ class GeminiService(
     private val mapper: ObjectMapper
 ) {
 
+    private val logger = LoggerFactory.getLogger(GeminiService::class.java)
+
     /**
      * Wysyła tekst użytkownika do modelu Gemini, prosząc o strukturalny JSON.
      */
     suspend fun parseVoiceTextToMeasurement(voiceText: String): MeasurementParsedDto {
         if (config.apiKey == "mock" || config.apiKey.isBlank()) {
             // W przypadku testów lub braku klucza API, zwraca Mock
+            logger.warn("⚠️  MOCK MODE: Returning hardcoded measurement (120/80/70) for input: \"{}\"", voiceText)
+            logger.warn("   To enable real AI parsing, set the GEMINI_API_KEY environment variable.")
             return MeasurementParsedDto(120, 80, 70)
         }
 
