@@ -24,7 +24,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useAppStore } from '../../store/useAppStore';
-import { parseVoiceText, saveMeasurement, getMeasurements } from '../../api/client';
+import { parseVoiceText, saveMeasurement, getMeasurements, getHealthTip } from '../../api/client';
 import { medicalColors } from '../../theme';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
 import type { MD3Theme } from 'react-native-paper';
@@ -44,6 +44,9 @@ export default function DashboardScreen() {
   const setMeasurements = useAppStore((s) => s.setMeasurements);
   const pendingParsed = useAppStore((s) => s.pendingParsed);
   const setPendingParsed = useAppStore((s) => s.setPendingParsed);
+  const addOfflineMeasurement = useAppStore((s) => s.addOfflineMeasurement);
+  const healthTip = useAppStore((s) => s.healthTip);
+  const setHealthTip = useAppStore((s) => s.setHealthTip);
 
   const [isSaving, setIsSaving] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -87,16 +90,30 @@ export default function DashboardScreen() {
 
   const lastMeasurement = measurements.length > 0 ? measurements[0] : null;
 
-  // Odśwież pomiary przy każdym wejściu na ekran
+  // Odśwież pomiary i poradę przy każdym wejściu na ekran
   useFocusEffect(
     useCallback(() => {
       if (user?.id) {
         getMeasurements(user.id)
           .then(setMeasurements)
           .catch(() => {});
+
+        getHealthTip(user.id)
+          .then(setHealthTip)
+          .catch(() => {});
       }
     }, [user?.id])
   );
+
+  const handleRefreshTip = async () => {
+    if (!user?.id) return;
+    try {
+      const newTip = await getHealthTip(user.id);
+      setHealthTip(newTip);
+    } catch (e) {
+      Alert.alert('Błąd', 'Nie udało się odświeżyć porady.');
+    }
+  };
 
   /**
    * Określ kolor i etykietę pomiaru wg norm medycznych
@@ -264,6 +281,31 @@ export default function DashboardScreen() {
           </Surface>
         );
       })()}
+
+      {/* ————— PORADA AI (RAG) ————— */}
+      {healthTip && (
+        <Surface style={styles.aiTipCard} elevation={1}>
+          <View style={styles.aiTipHeader}>
+            <MaterialCommunityIcons name="lightbulb-on-outline" size={24} color={medicalColors.warning} />
+            <Text variant="titleMedium" style={styles.cardTitle}>
+              Porada AI
+            </Text>
+            <View style={{ flex: 1 }} />
+            <IconButton
+              icon="refresh"
+              size={20}
+              onPress={handleRefreshTip}
+              iconColor={theme.colors.primary}
+            />
+          </View>
+          <Text variant="bodyMedium" style={styles.aiTipText}>
+            {healthTip.tip}
+          </Text>
+          <Text variant="labelSmall" style={styles.aiTipDate}>
+            Wygenerowano: {new Date(healthTip.generatedAt).toLocaleString()}
+          </Text>
+        </Surface>
+      )}
 
       {/* ————— DIALOG DODAWANIA WYNIKU (FORMULARZ + AI) ————— */}
       <Portal>
@@ -454,7 +496,21 @@ export default function DashboardScreen() {
                   setMeasurements(refreshed);
                   setShowAddDialog(false);
                 } catch (e: any) {
-                  Alert.alert('Błąd zapisu', 'Nie udało się zapisać pomiaru.');
+                  // Brak odpowiedzi serwera = problem sieciowy → zapis offline
+                  if (!e?.response) {
+                    addOfflineMeasurement(user.id, {
+                      systolic: sys,
+                      diastolic: dia,
+                      pulse: pulse,
+                    });
+                    Alert.alert(
+                      '📴 Zapisano offline',
+                      'Brak połączenia z serwerem. Pomiar został zapisany lokalnie i zostanie zsynchronizowany po przywróceniu połączenia.'
+                    );
+                    setShowAddDialog(false);
+                  } else {
+                    Alert.alert('Błąd zapisu', 'Nie udało się zapisać pomiaru.');
+                  }
                 } finally {
                   setIsSaving(false);
                 }
@@ -531,6 +587,31 @@ const makeStyles = (theme: MD3Theme) =>
       fontWeight: '700',
       color: theme.colors.onSurface,
       marginTop: 4,
+    },
+    aiTipCard: {
+      marginHorizontal: 16,
+      marginBottom: 20,
+      padding: 16,
+      borderRadius: 16,
+      backgroundColor: theme.colors.elevation.level1,
+      borderLeftWidth: 4,
+      borderLeftColor: theme.colors.primary,
+    },
+    aiTipHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+      gap: 8,
+    },
+    aiTipText: {
+      fontStyle: 'italic',
+      lineHeight: 22,
+      color: theme.colors.onSurfaceVariant,
+    },
+    aiTipDate: {
+      marginTop: 12,
+      textAlign: 'right',
+      color: theme.colors.outline,
     },
     metricLabel: {
       color: theme.colors.onSurfaceVariant,

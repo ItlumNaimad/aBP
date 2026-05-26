@@ -13,12 +13,13 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAppStore } from '../../store/useAppStore';
-import { savePdfToDevice } from '../../api/client';
+import { savePdfToDevice, saveMeasurement, getMeasurements } from '../../api/client';
 import type { MD3Theme } from 'react-native-paper';
 
 /**
  * Ekran Ustawień:
  * - Przełącznik motywu jasny/ciemny
+ * - Sekcja synchronizacji offline (liczba oczekujących + przycisk sync)
  * - Pobieranie raportu PDF
  * - Wylogowanie
  */
@@ -28,8 +29,58 @@ export default function SettingsScreen() {
   const toggleTheme = useAppStore((s) => s.toggleTheme);
   const user = useAppStore((s) => s.user);
   const logout = useAppStore((s) => s.logout);
+  const pendingOfflineMeasurements = useAppStore((s) => s.pendingOfflineMeasurements);
+  const removeOfflineMeasurement = useAppStore((s) => s.removeOfflineMeasurement);
+  const setMeasurements = useAppStore((s) => s.setMeasurements);
 
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  /**
+   * Ręczna synchronizacja kolejki offline z backendem.
+   *
+   * Iteruje po wszystkich oczekujących pomiarach i próbuje zapisać je na serwerze.
+   * Pomiary pomyślnie zsynchronizowane są usuwane z kolejki.
+   * Jeśli backend nadal jest niedostępny, pomiary pozostają w kolejce.
+   */
+  const handleSyncOffline = async () => {
+    if (!user?.id || pendingOfflineMeasurements.length === 0) return;
+
+    setIsSyncing(true);
+    let synced = 0;
+    let failed = 0;
+
+    for (const item of pendingOfflineMeasurements) {
+      try {
+        await saveMeasurement(item.userId, item.parsed);
+        removeOfflineMeasurement(item.localId);
+        synced++;
+      } catch {
+        failed++;
+      }
+    }
+
+    // Odśwież listę pomiarów po synchronizacji
+    if (synced > 0) {
+      try {
+        const refreshed = await getMeasurements(user.id);
+        setMeasurements(refreshed);
+      } catch {
+        // Ignoruj — pomiary i tak zostały zapisane
+      }
+    }
+
+    setIsSyncing(false);
+
+    if (failed === 0) {
+      Alert.alert('✅ Synchronizacja zakończona', `Zsynchronizowano ${synced} pomiar(ów).`);
+    } else {
+      Alert.alert(
+        '⚠️ Częściowa synchronizacja',
+        `Zsynchronizowano: ${synced}, nieudane: ${failed}. Spróbuj ponownie później.`
+      );
+    }
+  };
 
   const handleDownloadPdf = async () => {
     if (!user?.id) return;
@@ -67,6 +118,7 @@ export default function SettingsScreen() {
   };
 
   const styles = makeStyles(theme);
+  const pendingCount = pendingOfflineMeasurements.length;
 
   return (
     <ScrollView
@@ -106,6 +158,48 @@ export default function SettingsScreen() {
               color={theme.colors.primary}
             />
           )}
+          style={styles.listItem}
+        />
+      </Surface>
+
+      {/* Synchronizacja offline */}
+      <Surface style={styles.section} elevation={1}>
+        <Text variant="titleMedium" style={styles.sectionTitle}>Synchronizacja</Text>
+        <Divider />
+
+        <List.Item
+          title="Pomiary oczekujące"
+          description={
+            pendingCount > 0
+              ? `${pendingCount} pomiar(ów) w kolejce offline`
+              : 'Brak oczekujących pomiarów'
+          }
+          titleStyle={styles.listTitle}
+          descriptionStyle={styles.listDesc}
+          left={(props) => (
+            <List.Icon
+              {...props}
+              icon={pendingCount > 0 ? 'cloud-upload' : 'cloud-check'}
+              color={pendingCount > 0 ? theme.colors.error : theme.colors.primary}
+            />
+          )}
+          right={() =>
+            pendingCount > 0 ? (
+              isSyncing ? (
+                <ActivityIndicator size="small" />
+              ) : (
+                <Button
+                  mode="contained-tonal"
+                  compact
+                  onPress={handleSyncOffline}
+                  icon="sync"
+                  labelStyle={{ fontSize: 12 }}
+                >
+                  Synchronizuj
+                </Button>
+              )
+            ) : null
+          }
           style={styles.listItem}
         />
       </Surface>

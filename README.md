@@ -627,3 +627,34 @@ Zaktualizowano asercje testowe do aktualnych tekstów UI (`'Monitor Ciśnienia'`
     *   **Frontend:** `cd Frontend && npx jest` → **Tests: 9 passed, 9 total** (3 suites)
     *   **Backend:** `cd Backend && ./gradlew test` → **BUILD SUCCESSFUL**
 
+---
+
+## Dziennik prac i postępy (26.05.2026 - Faza 8: Rozszerzenia Natywne i Produkcyjne)
+
+Zrealizowano zaplanowane rozszerzenia z Fazy 8 (poza pełną fizyczną integracją zależną od urządzenia z Androidem):
+
+### 1. Tryb Offline-First i synchronizacja na froncie
+Aplikacja została przystosowana do działania w miejscach bez zasięgu sieci (np. w przychodni).
+- Nowy hook `useNetworkStatus` aktywnie odpytuje backend o dostępność.
+- Jeśli backend jest niedostępny, UI wyświetla czerwony banner `OfflineBanner`.
+- Pomiary są dodawane do kolejki offline w `AsyncStorage` (stan `pendingOfflineMeasurements` w Zustandzie).
+- W ustawieniach dodano przycisk wymuszający ręczną synchronizację oczekujących pomiarów.
+
+### 2. Generatywna sztuczna inteligencja jako Asystent Medyczny (RAG)
+Zaimplementowano mechanizm Retrieval-Augmented Generation (RAG) korzystający z Gemini AI:
+- `HealthTipService` pobiera historię pacjenta (do 10 pomiarów z bazy danych przez R2DBC).
+- Historia wstrzykiwana jest do promptu i wysyłana asynchronicznie (`suspend`) do modelu LLM.
+- Model analizuje trendy i zwraca krótką (2-3 zdania) poradę prozdrowotną w języku polskim.
+- Porada widoczna jest jako dedykowana sekcja na głównym `Dashboardzie` wraz z opcją ręcznego odświeżenia.
+- Zachowano pełną non-blocking architekturę Netty dzięki przejściu z `Mono` do Coroutines (`awaitSingle()`).
+
+### 3. Dokumentacja (KDoc)
+Zgodnie z wymaganiami akademickimi do wszystkich nowych usług, kontrolerów oraz DTO dodano obszerne komentarze dokumentacyjne. Wyjaśniają one działanie mechanizmów reaktywnych (brak blokowania I/O, asynchroniczne strumienie Flow). Podobne adnotacje znalazły się w głównym sklepie aplikacji (`useAppStore.ts`) oraz kliencie API.
+
+### 4. Analiza metodyki testów i rozbudowa
+Stworzono kompleksowy raport `test_analysis.md` opisujący powody wyboru określonych frameworków testowych (`MockK`, `RNTL`, `@WebFluxTest`). Dodano nowe zestawy testów jednostkowych (np. `HealthTipServiceTest`) z wirtualizacją czasu i weryfikacją mocków dla przepływów Kotlin Coroutines (`coEvery`).
+
+*   **Pomyślne weryfikacje / Komendy wykonawcze:**
+    *   **Frontend:** `cd Frontend && npx jest` → **Tests: 9 passed, 9 total**
+    *   **Backend:** `cd Backend && ./gradlew test` → **BUILD SUCCESSFUL** (22 tests passed)
+

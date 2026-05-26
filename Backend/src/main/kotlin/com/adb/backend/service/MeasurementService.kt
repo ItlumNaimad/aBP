@@ -8,6 +8,13 @@ import org.springframework.stereotype.Service
 import java.time.LocalDateTime
 import java.util.UUID
 
+/**
+ * Serwis odpowiedzialny za logikę biznesową operacji na pomiarach ciśnienia i tętna.
+ *
+ * Implementuje w pełni reaktywny model (non-blocking) używając Kotlin Coroutines.
+ * Wstrzykiwane zależności:
+ * - `measurementRepository`: interfejs CoroutineCrudRepository do bezblokowego dostępu do bazy.
+ */
 @Service
 class MeasurementService(
     private val measurementRepository: MeasurementRepository
@@ -15,6 +22,17 @@ class MeasurementService(
 
     /**
      * Zapisuje nowy pomiar do bazy po wcześniejszej ewaluacji przez detektor anomalii medycznych.
+     *
+     * Mechanizm reaktywności:
+     * Metoda jest oznaczona jako `suspend fun`, co oznacza, że wykonuje się w ramach
+     * coroutine i nie blokuje wątku serwera HTTP (Netty). 
+     * Operacja `toList()` użyta na `Flow<Measurement>` zawiesza wykonanie do momentu 
+     * zebrania całego strumienia danych z bazy, uwalniając w tym czasie wątek.
+     * Podobnie `measurementRepository.save()` wykonuje asynchroniczny zapis non-blocking.
+     *
+     * @param userId UUID użytkownika dodającego pomiar
+     * @param parsedDto DTO z wartościami liczbowymi pomiaru (skurczowe, rozkurczowe, puls)
+     * @return Zapisany obiekt Encji Measurement (zawierający wygenerowane ID i flagę isAnomaly)
      */
     suspend fun saveMeasurement(userId: UUID, parsedDto: MeasurementParsedDto): Measurement {
         val lastMeasurements = measurementRepository.findTop10ByUserIdOrderByCreatedAtDesc(userId).toList()
