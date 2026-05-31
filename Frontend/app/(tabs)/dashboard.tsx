@@ -320,7 +320,7 @@ export default function DashboardScreen() {
         >
           <Dialog.Title style={styles.dialogTitle}>Nowy pomiar</Dialog.Title>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
           >
           <ScrollView

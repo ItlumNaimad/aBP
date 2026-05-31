@@ -5,12 +5,14 @@ import com.adb.backend.domain.dto.MeasurementParsedDto
 import com.adb.backend.repository.MeasurementRepository
 import com.adb.backend.service.MeasurementService
 import kotlinx.coroutines.flow.Flow
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.http.ResponseEntity
 import java.util.UUID
 
 /**
@@ -56,5 +58,20 @@ class MeasurementController(
         @RequestBody parsedDto: MeasurementParsedDto
     ): Measurement {
         return measurementService.saveMeasurement(userId, parsedDto)
+    }
+
+    /**
+     * Usuwa pomiar z bazy danych weryfikując uprawnienia właściciela.
+     *
+     * @param userId UUID użytkownika
+     * @param measurementId UUID pomiaru
+     */
+    @DeleteMapping("/{userId}/{measurementId}")
+    suspend fun deleteMeasurement(
+        @PathVariable userId: UUID,
+        @PathVariable measurementId: UUID
+    ): ResponseEntity<Void> {
+        val deleted = measurementService.deleteMeasurement(userId, measurementId)
+        return if (deleted) ResponseEntity.noContent().build() else ResponseEntity.notFound().build()
     }
 }

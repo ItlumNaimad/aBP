@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, StyleSheet, FlatList } from 'react-native';
+import { View, StyleSheet, FlatList, Alert } from 'react-native';
 import {
   Text,
   Surface,
@@ -10,8 +10,9 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useAppStore } from '../../store/useAppStore';
-import { getMeasurements } from '../../api/client';
+import { getMeasurements, deleteMeasurement } from '../../api/client';
 import { medicalColors } from '../../theme';
+import { IconButton } from 'react-native-paper';
 import BloodPressureChart from '../../components/BloodPressureChart';
 import type { Measurement } from '../../store/useAppStore';
 import type { MD3Theme } from 'react-native-paper';
@@ -64,6 +65,33 @@ export default function HistoryScreen() {
     }
   };
 
+  const handleDelete = (measurementId: string) => {
+    Alert.alert(
+      'Usuń pomiar',
+      'Czy na pewno chcesz usunąć ten pomiar?',
+      [
+        { text: 'Anuluj', style: 'cancel' },
+        { 
+          text: 'Usuń', 
+          style: 'destructive',
+          onPress: async () => {
+            if (!user?.id) return;
+            try {
+              setLoading(true);
+              await deleteMeasurement(user.id, measurementId);
+              const refreshed = await getMeasurements(user.id);
+              setMeasurements(refreshed);
+            } catch (e) {
+              Alert.alert('Błąd', 'Nie udało się usunąć pomiaru. Sprawdź połączenie.');
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const renderItem = ({ item }: { item: Measurement }) => {
     const statusColor = getStatusColor(item.systolic, item.diastolic);
 
@@ -99,14 +127,23 @@ export default function HistoryScreen() {
               </Text>
             </View>
 
-            {item.isAnomaly && (
-              <View style={[styles.anomalyBadge, { backgroundColor: medicalColors.danger + '20' }]}>
-                <MaterialCommunityIcons name="alert" size={16} color={medicalColors.danger} />
-                <Text style={[styles.anomalyText, { color: medicalColors.danger }]}>
-                  Anomalia
-                </Text>
-              </View>
-            )}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {item.isAnomaly && (
+                <View style={[styles.anomalyBadge, { backgroundColor: medicalColors.danger + '20' }]}>
+                  <MaterialCommunityIcons name="alert" size={16} color={medicalColors.danger} />
+                  <Text style={[styles.anomalyText, { color: medicalColors.danger }]}>
+                    Anomalia
+                  </Text>
+                </View>
+              )}
+              <IconButton
+                icon="trash-can-outline"
+                iconColor={theme.colors.error}
+                size={22}
+                onPress={() => handleDelete(item.id)}
+                style={{ margin: 0 }}
+              />
+            </View>
           </View>
         </View>
       </Surface>

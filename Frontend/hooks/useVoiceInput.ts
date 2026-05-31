@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { PermissionsAndroid, Platform } from 'react-native';
 import Voice, { SpeechResultsEvent, SpeechErrorEvent } from '@react-native-voice/voice';
 
 /**
@@ -64,28 +65,59 @@ export function useVoiceInput(): UseVoiceInputReturn {
 
     // Czyszczenie zasobów przy odmontowywaniu hooka
     return () => {
-      Voice.destroy().then(Voice.removeAllListeners);
+      try {
+        if (Voice && (Voice as any)._voice) {
+          Voice.destroy().then(Voice.removeAllListeners).catch(() => {});
+        }
+      } catch (e) {
+        // Ignoruj błąd przy niszczeniu
+      }
     };
   }, []);
 
   const startListening = useCallback(async () => {
     try {
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+          {
+            title: 'Uprawnienie do mikrofonu',
+            message: 'Aplikacja potrzebuje dostępu do mikrofonu, aby rozpoznawać polecenia głosowe.',
+            buttonNeutral: 'Później',
+            buttonNegative: 'Anuluj',
+            buttonPositive: 'OK',
+          }
+        );
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          throw new Error('Odmówiono dostępu do mikrofonu.');
+        }
+      }
+
       setTranscript('');
       setIsListening(true);
       // Rozpoczęcie nasłuchu w języku polskim
-      await Voice.start('pl-PL');
+      if (Voice && (Voice as any)._voice) { // weryfikacja natywnego modułu
+        await Voice.start('pl-PL');
+      } else {
+        // Fallback w razie braku native module - symulujemy odrzucenie, żeby złapał to przycisk w UI
+        throw new Error('Natywny moduł rozpoznawania mowy nie został skompilowany. Przebuduj aplikację komendą npx expo prebuild.');
+      }
     } catch (e) {
       console.error('Failed to start voice recognition:', e);
       setIsListening(false);
+      throw e;
     }
   }, []);
 
   const stopListening = useCallback(async () => {
     try {
-      await Voice.stop();
+      if (Voice && (Voice as any)._voice) {
+        await Voice.stop();
+      }
       setIsListening(false);
     } catch (e) {
       console.error('Failed to stop voice recognition:', e);
+      setIsListening(false);
     }
   }, []);
 

@@ -182,23 +182,29 @@ function ChartTooltip({ state, theme }: { state: any; theme: MD3Theme }) {
   const [values, setValues] = React.useState({ sys: 0, dia: 0, pulse: 0 });
 
   React.useEffect(() => {
-    // Odczytujemy SharedValue w efekcie (poza renderem)
-    // Victory-native state.y.*.value jest obiektem z .value (SharedValue)
-    const sysVal = state.y.systolic.value;
-    const diaVal = state.y.diastolic.value;
-    const pulseVal = state.y.pulse.value;
+    // Odczytujemy SharedValue w bezpiecznym interwale (poza renderem Reacta),
+    // co rozwiązuje ostrzeżenie Reanimated oraz zapobiega pętli "Maximum update depth".
+    const intervalId = setInterval(() => {
+      const sysVal = state.y.systolic?.value ?? state.y.systolic;
+      const diaVal = state.y.diastolic?.value ?? state.y.diastolic;
+      const pulseVal = state.y.pulse?.value ?? state.y.pulse;
 
-    // SharedValue ma .value, ale może też być zwykłą liczbą w zależności od wersji
-    const sys = typeof sysVal === 'object' && sysVal !== null ? sysVal.value : sysVal;
-    const dia = typeof diaVal === 'object' && diaVal !== null ? diaVal.value : diaVal;
-    const pulse = typeof pulseVal === 'object' && pulseVal !== null ? pulseVal.value : pulseVal;
+      const sys = typeof sysVal === 'object' && sysVal !== null ? sysVal.value : sysVal;
+      const dia = typeof diaVal === 'object' && diaVal !== null ? diaVal.value : diaVal;
+      const pulse = typeof pulseVal === 'object' && pulseVal !== null ? pulseVal.value : pulseVal;
 
-    setValues({
-      sys: Math.round(sys ?? 0),
-      dia: Math.round(dia ?? 0),
-      pulse: Math.round(pulse ?? 0),
-    });
-  });
+      const s = Math.round(sys ?? 0);
+      const d = Math.round(dia ?? 0);
+      const p = Math.round(pulse ?? 0);
+
+      setValues(prev => {
+        if (prev.sys === s && prev.dia === d && prev.pulse === p) return prev;
+        return { sys: s, dia: d, pulse: p };
+      });
+    }, 50);
+
+    return () => clearInterval(intervalId);
+  }, [state]);
 
   return (
     <View style={[styles.tooltip, { backgroundColor: theme.colors.elevation.level3 }]}>

@@ -29,7 +29,7 @@ export function useNetworkStatus(intervalMs: number = 15000) {
    */
   const checkConnection = useCallback(async () => {
     try {
-      await api.get('/api/users/login', { timeout: 5000 });
+      await api.get('/api/users/login', { timeout: 45000 });
       // Endpoint zwróci 4xx/5xx ale to nie problem — odpowiedział, czyli serwer żyje
       setIsOnline(true);
     } catch (error: any) {

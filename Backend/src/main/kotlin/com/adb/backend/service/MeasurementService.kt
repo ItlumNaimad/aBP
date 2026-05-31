@@ -75,4 +75,20 @@ class MeasurementService(
         
         return false
     }
+
+    /**
+     * Usuwa pomiar, jeśli należy on do podanego użytkownika.
+     *
+     * @param userId UUID użytkownika
+     * @param measurementId UUID pomiaru do usunięcia
+     * @return true jeśli usunięto, false jeśli pomiar nie istnieje lub nie należy do użytkownika
+     */
+    suspend fun deleteMeasurement(userId: UUID, measurementId: UUID): Boolean {
+        val measurement = measurementRepository.findById(measurementId)
+        if (measurement != null && measurement.userId == userId) {
+            measurementRepository.deleteById(measurementId)
+            return true
+        }
+        return false
+    }
 }

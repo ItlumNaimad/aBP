@@ -14,7 +14,7 @@ import type { AppUser, Measurement, ParsedMeasurement, HealthTip } from '../stor
  */
 const getBaseUrl = (): string => {
   if (Platform.OS === 'android') {
-    return 'https://cold-bats-marry.loca.lt';
+    return 'https://moody-feet-flash.loca.lt';
   }
   // Web lub iOS — domyślnie localhost
   return 'http://localhost:8080';
@@ -28,7 +28,7 @@ const getBaseUrl = (): string => {
  */
 const api = axios.create({
   baseURL: getBaseUrl(),
-  timeout: 15000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
     'Bypass-Tunnel-Reminder': 'true',
@@ -99,12 +99,16 @@ export const getMeasurements = async (userId: string): Promise<Measurement[]> =>
  * @param parsed — sparsowane wartości {systolic, diastolic, pulse}
  * @returns Measurement — zapisany pomiar z wygenerowanym ID, datą i flagą anomalii
  */
-export const saveMeasurement = async (
-  userId: string,
-  parsed: ParsedMeasurement
-): Promise<Measurement> => {
-  const { data } = await api.post<Measurement>(`/api/measurements/${userId}`, parsed);
-  return data;
+export const saveMeasurement = async (userId: string, data: { systolic: number, diastolic: number, pulse: number }): Promise<Measurement> => {
+  const response = await api.post<Measurement>(`/api/measurements/${userId}`, data);
+  return response.data;
+};
+
+/**
+ * Usuń pomiar.
+ */
+export const deleteMeasurement = async (userId: string, measurementId: string): Promise<void> => {
+  await api.delete(`/api/measurements/${userId}/${measurementId}`);
 };
 
 // ——————————————————————————————————————
