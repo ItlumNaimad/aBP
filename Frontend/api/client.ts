@@ -14,7 +14,7 @@ import type { AppUser, Measurement, ParsedMeasurement, HealthTip } from '../stor
  */
 const getBaseUrl = (): string => {
   if (Platform.OS === 'android') {
-    return 'https://moody-feet-flash.loca.lt';
+    return 'https://eight-vans-hug.loca.lt';
   }
   // Web lub iOS — domyślnie localhost
   return 'http://localhost:8080';

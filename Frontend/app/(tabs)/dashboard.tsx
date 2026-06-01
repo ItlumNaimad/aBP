@@ -393,17 +393,17 @@ export default function DashboardScreen() {
                     size={28}
                     iconColor={isListening ? theme.colors.onPrimary : theme.colors.primary}
                     containerColor={isListening ? theme.colors.primary : theme.colors.primaryContainer}
-                    onPress={() => {
+                    onPress={async () => {
                       try {
                         if (isListening) {
-                          stopListening();
+                          await stopListening();
                         } else {
-                          startListening();
+                          await startListening();
                         }
-                      } catch {
+                      } catch (e: any) {
                         Alert.alert(
                           'Mikrofon niedostępny',
-                          'Rozpoznawanie mowy wymaga Development Build (npx expo run:android). W Expo Go wpisz tekst ręcznie.'
+                          e.message || 'Rozpoznawanie mowy wymaga dedykowanej aplikacji z modułami natywnymi (Custom Dev Build). Brak dostępu do mikrofonu.'
                         );
                       }
                     }}

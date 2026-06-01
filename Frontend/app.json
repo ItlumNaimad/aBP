@@ -40,6 +40,9 @@
       "eas": {
         "projectId": "c951e58f-989b-4d49-bfdf-5edefc99fdb0"
       }
+    },
+    "ios": {
+      "bundleIdentifier": "com.adb.abp"
     }
   }
 }
